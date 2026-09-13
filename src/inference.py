@@ -60,6 +60,148 @@ class ReadinessPredictor:
             model = pickle.load(f)
         return model
 
+    def _predict_raw_features(self, feat_dict: Dict[str, Any]) -> float:
+        """Helper to quickly evaluate a counterfactual feature set on the active model."""
+        row = {f: feat_dict.get(f, np.nan) for f in self.feature_names}
+        X = pd.DataFrame([row], columns=self.feature_names).astype(float)
+        raw = float(self.model.predict(X)[0])
+        return float(np.clip(raw, 1.0, 5.0))
+
+    def generate_recommendation(
+        self,
+        features: Dict[str, Any],
+        pred_raw: float,
+        tier: str,
+    ) -> Dict[str, Any]:
+        """
+        Generates contextual recovery assessments and actionable interventions linked directly
+        to counterfactual predictions from the active XGBoost model.
+        Answers the core brief prompt:
+          1. How well did you recover?
+          2. What should you do about it today? (with model delta projected from behavioral levers)
+        """
+        alc_units = float(features.get("alcohol_units") or 0.0)
+        had_alc = float(features.get("had_alcohol") or 0.0)
+        sleep_debt = float(features.get("sleep_debt") or 0.0)
+        sleep_z = float(features.get("total_sleep_minutes_zscore") or 0.0)
+        hr_z = float(features.get("avg_hr_bpm_zscore") or 0.0)
+        hrv_z = float(features.get("avg_hrv_rmssd_ms_zscore") or 0.0)
+
+        # 1. "Last Night's Rest" (user-friendly recovery summary)
+        if tier == "Recovery":
+            reasons = []
+            if had_alc > 0 or alc_units > 0:
+                reasons.append(f"{alc_units:.1f} drinks kept heart rate elevated")
+            if sleep_debt < -20 or sleep_z < -0.8:
+                reasons.append(f"{abs(int(sleep_debt))}m sleep deficit")
+            if hr_z > 0.8:
+                reasons.append("higher resting heart rate than normal")
+            if hrv_z < -0.8:
+                reasons.append("nervous system was working in overdrive")
+            if not reasons:
+                reasons.append("shorter restorative deep & REM cycles")
+            recovery_assessment = "Rest was a bit choppy (" + f"{pred_raw:.2f}/5). " + " & ".join(reasons).capitalize() + " — your body worked harder than usual overnight."
+        elif tier == "Moderate":
+            recovery_assessment = f"Steady, solid rest ({pred_raw:.2f}/5). Your heart rate, HRV, and sleep depth were right around your normal baseline."
+        else:
+            recovery_assessment = f"Deep, high-quality recharge ({pred_raw:.2f}/5). Calm resting heart rate and strong restorative stages left your body fully topped up."
+
+        # 2. "Today's Rhythm" (approachable daily pacing)
+        if tier == "Recovery":
+            what_to_do = "Take things easy today. Stick to gentle walks or light movement, drink plenty of water, and treat yourself to an earlier bedtime tonight."
+        elif tier == "Moderate":
+            what_to_do = "Keep your regular rhythm. You have good steady energy for normal workouts, focused work blocks, and everyday tasks."
+        else:
+            what_to_do = "You're primed to go! Perfect day for a challenging workout, aiming for a personal best, or tackling high-focus projects."
+
+        # 3. Model-Linked Score Improvement Lever (Counterfactual Prediction)
+        best_action = "Keep up your great sleep schedule; your body is in an ideal groove."
+        best_delta = 0.0
+
+        if pred_raw < 4.8:
+            candidate_levers = []
+
+            # Lever A: Eliminate alcohol
+            if had_alc > 0 or alc_units > 0:
+                cf = dict(features)
+                cf["alcohol_units"] = 0.0
+                cf["had_alcohol"] = 0.0
+                cf["alcohol_level"] = 0.0
+                cf_pred = self._predict_raw_features(cf)
+                delta = cf_pred - pred_raw
+                if delta > 0.03:
+                    candidate_levers.append((
+                        delta,
+                        f"Skip alcohol tonight to lower your resting HR and wake up refreshed",
+                        cf_pred
+                    ))
+
+            # Lever B: Clear sleep deficit (+45m sleep duration)
+            if sleep_debt < 15.0 or sleep_z < 0.6:
+                cf = dict(features)
+                cf["total_sleep_minutes_zscore"] = max(sleep_z + 0.8, 0.8)
+                cf["sleep_debt"] = max(sleep_debt + 45.0, 15.0)
+                cf["deep_rem_total"] = max(float(features.get("deep_rem_total") or 100.0) + 20.0, 140.0)
+                cf_pred = self._predict_raw_features(cf)
+                delta = cf_pred - pred_raw
+                if delta > 0.03:
+                    candidate_levers.append((
+                        delta,
+                        "Head to bed 45 mins earlier to erase sleep debt and reset energy",
+                        cf_pred
+                    ))
+
+            # Lever C: Normalize resting HR & parasympathetic tone
+            if hr_z > 0.3 or hrv_z < 0.0:
+                cf = dict(features)
+                cf["avg_hr_bpm_zscore"] = -0.5
+                cf["avg_hrv_rmssd_ms_zscore"] = max(hrv_z + 0.8, 0.8)
+                cf_pred = self._predict_raw_features(cf)
+                delta = cf_pred - pred_raw
+                if delta > 0.03:
+                    candidate_levers.append((
+                        delta,
+                        "Wind down with 10m breathwork and keep dinner light before bed",
+                        cf_pred
+                    ))
+
+            # Lever D: Combined optimization (alcohol + sleep debt recovery)
+            if (had_alc > 0) and (sleep_debt < 0 or hr_z > 0):
+                cf = dict(features)
+                cf["alcohol_units"] = 0.0
+                cf["had_alcohol"] = 0.0
+                cf["alcohol_level"] = 0.0
+                cf["total_sleep_minutes_zscore"] = max(sleep_z + 0.8, 0.8)
+                cf["sleep_debt"] = max(sleep_debt + 45.0, 15.0)
+                cf["avg_hr_bpm_zscore"] = -0.4
+                cf_pred = self._predict_raw_features(cf)
+                delta = cf_pred - pred_raw
+                if delta > 0.03:
+                    candidate_levers.append((
+                        delta,
+                        "Skip the evening drink + get 45 mins extra sleep to clear debt",
+                        cf_pred
+                    ))
+
+            if candidate_levers:
+                candidate_levers.sort(key=lambda x: x[0], reverse=True)
+                top_delta, top_action, top_cf_pred = candidate_levers[0]
+                best_delta = round(top_delta, 2)
+                best_action = top_action
+                projected_score = min(5.0, round(pred_raw + best_delta, 2))
+            else:
+                projected_score = round(pred_raw, 2)
+        else:
+            projected_score = round(pred_raw, 2)
+
+        return {
+            "how_did_you_recover": recovery_assessment,
+            "what_to_do_today": what_to_do,
+            "improvement_action": best_action,
+            "projected_delta": best_delta,
+            "projected_score": projected_score,
+        }
+
     @staticmethod
     def _map_tier_and_guidance(score_rounded: int, has_alcohol: float, avg_hr_zscore: float) -> Tuple[str, str]:
         """Generate human-readable readiness category and actionable guidance."""
@@ -123,11 +265,18 @@ class ReadinessPredictor:
 
         logger.debug(f"Predict single: raw={clamped_raw:.3f}, rounded={rounded_pred}, tier={tier}, cold_start={is_cold_start}")
 
+        recommendation = self.generate_recommendation(
+            features=features,
+            pred_raw=clamped_raw,
+            tier=tier,
+        )
+
         return {
             "pred_raw": round(clamped_raw, 3),
             "pred_rounded": rounded_pred,
             "readiness_tier": tier,
             "guidance": guidance,
+            "recommendation": recommendation,
             "is_cold_start": is_cold_start,
             "features_used": {k: None if pd.isna(v) else float(v) for k, v in row.items()}
         }

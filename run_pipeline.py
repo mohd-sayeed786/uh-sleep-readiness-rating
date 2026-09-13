@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CLI entry point to execute the readiness score pipeline end-to-end with phase timing.
+CLI entry point to execute the readiness score pipeline end-to-end with phase timing and live loading display.
 Usage:
     python run_pipeline.py
     python run_pipeline.py --train --eval --save
@@ -9,6 +9,7 @@ Usage:
 import argparse
 import logging
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -16,6 +17,10 @@ from pathlib import Path
 root_dir = Path(__file__).resolve().parent
 if str(root_dir) not in sys.path:
     sys.path.insert(0, str(root_dir))
+
+# Immediate CLI feedback before heavy module loading
+if sys.stdout.isatty():
+    print("\033[1;36m[Ring AI]\033[0m Initializing pipeline execution environment...", flush=True)
 
 from src.config import FEATURE_NAMES, LOG_FILE, MODEL_PATH
 from src.data_pipeline import run_data_pipeline
@@ -26,6 +31,47 @@ from src.logger import get_logger, setup_logging
 from src.train import train_model
 
 logger = get_logger("pipeline_cli")
+
+
+class PhaseSpinner:
+    """Live animated terminal spinner ensuring continuous visual feedback during execution."""
+    def __init__(self, message: str):
+        self.message = message
+        self.stop_event = threading.Event()
+        self.thread = None
+        self.start_time = 0.0
+        self.is_tty = sys.stdout.isatty()
+
+    def _spin(self):
+        spinner_chars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+        idx = 0
+        while not self.stop_event.is_set():
+            elapsed = time.time() - self.start_time
+            msg = f"\r  \033[36m{spinner_chars[idx % len(spinner_chars)]}\033[0m \033[1m{self.message}\033[0m \033[90m({elapsed:.1f}s)\033[0m\033[K"
+            sys.stdout.write(msg)
+            sys.stdout.flush()
+            idx += 1
+            time.sleep(0.08)
+
+    def __enter__(self):
+        self.start_time = time.time()
+        if self.is_tty:
+            self.thread = threading.Thread(target=self._spin, daemon=True)
+            self.thread.start()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.is_tty:
+            self.stop_event.set()
+            if self.thread:
+                self.thread.join()
+            elapsed = time.time() - self.start_time
+            if exc_type is None:
+                msg = f"\r  \033[32m✔\033[0m \033[1m{self.message}\033[0m \033[32m[Completed in {elapsed:.2f}s]\033[0m\033[K\n"
+            else:
+                msg = f"\r  \033[31m✖\033[0m \033[1m{self.message}\033[0m \033[31m[Failed]\033[0m\033[K\n"
+            sys.stdout.write(msg)
+            sys.stdout.flush()
 
 
 def main():
@@ -57,7 +103,8 @@ def main():
     # 1. Ingestion & Cleaning
     t0 = time.time()
     logger.info("[Phase 1/4] Ingesting and cleaning raw datasets (D-008 to D-022)...")
-    base_df = run_data_pipeline()
+    with PhaseSpinner("Phase 1/4: Ingesting & cleaning raw sensor telemetry..."):
+        base_df = run_data_pipeline()
     t_clean = time.time() - t0
     logger.info(f"  -> Merged base table: {len(base_df):,} rows across {base_df['user_id'].nunique()} users")
     logger.info(f"  -> Sleep session match rate: {base_df['has_session_data'].mean()*100:.1f}%")
@@ -66,7 +113,8 @@ def main():
     # 2. Feature Engineering
     t0 = time.time()
     logger.info("[Phase 2/4] Engineering 13 selected features...")
-    feat_df = engineer_features(base_df)
+    with PhaseSpinner("Phase 2/4: Engineering 13 physiological features across 120 users..."):
+        feat_df = engineer_features(base_df)
     t_feat = time.time() - t0
     logger.info(f"  -> Feature table shape: {feat_df.shape}")
     logger.info(f"  -> Verified 13 features: {FEATURE_NAMES}")
@@ -82,16 +130,17 @@ def main():
             "learning_rate": args.learning_rate,
             "max_depth": args.max_depth,
         }
-        train_results = train_model(custom_params=custom_params, save_artifacts=args.save)
+        with PhaseSpinner(f"Phase 3/4: Training XGBoost Regressor ({args.n_estimators} trees, max_depth={args.max_depth})..."):
+            train_results = train_model(custom_params=custom_params, save_artifacts=args.save)
         t_train = time.time() - t0
 
         metrics = train_results["metrics"]
         logger.info(f"  -> Baseline Floor (Global Mean): RMSE = {metrics['baselines']['global_mean']['rmse']:.4f}")
         logger.info(f"  -> Baseline (User Mean):        RMSE = {metrics['baselines']['user_mean']['rmse']:.4f}")
-        logger.info(f"  -> XGBoost Validation:          RMSE = {metrics['validation']['rmse']:.4f} | R² = {metrics['validation']['r2']:.4f}")
-        logger.info(f"  -> XGBoost Test:                RMSE = {metrics['test']['rmse']:.4f} | R² = {metrics['test']['r2']:.4f}")
+        logger.info(f"  -> XGBoost Validation:          RMSE = {metrics['validation']['rmse']:.4f} | R\u00b2 = {metrics['validation']['r2']:.4f}")
+        logger.info(f"  -> XGBoost Test:                RMSE = {metrics['test']['rmse']:.4f} | R\u00b2 = {metrics['test']['r2']:.4f}")
         logger.info(f"  -> Test Exact Accuracy:         {metrics['test']['exact_accuracy']*100:.1f}%")
-        logger.info(f"  -> Test Accuracy ±1 Class:      {metrics['test']['accuracy_pm1']*100:.1f}%")
+        logger.info(f"  -> Test Accuracy \u00b11 Class:      {metrics['test']['accuracy_pm1']*100:.1f}%")
         logger.info(f"  -> Overfitting Gap (Train-Val): {train_results['overfitting_gap']:.4f}")
         logger.info(f"  -> Training phase completed in {t_train:.2f}s")
 
@@ -100,8 +149,9 @@ def main():
     if args.eval:
         t0 = time.time()
         logger.info("[Phase 4/4] Evaluating subgroups and slice breakdowns...")
-        predictor = ReadinessPredictor(model_path=MODEL_PATH)
-        eval_results = run_full_evaluation(predictor.model)
+        with PhaseSpinner("Phase 4/4: Evaluating subgroups & slice breakdowns..."):
+            predictor = ReadinessPredictor(model_path=MODEL_PATH)
+            eval_results = run_full_evaluation(predictor.model)
         t_eval = time.time() - t0
 
         slices = eval_results["slice_analysis"]
