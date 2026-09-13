@@ -49,7 +49,7 @@ class ReadinessPredictor:
             logger.warning(f"Model file not found at {self.model_path}. Auto-generating champion model at runtime...")
             try:
                 from src.train import train_model
-                train_model(save_model=True)
+                train_model(save_artifacts=True)
             except Exception as e:
                 err_msg = f"Model file not found at {self.model_path} and auto-training failed: {e}"
                 logger.error(err_msg)

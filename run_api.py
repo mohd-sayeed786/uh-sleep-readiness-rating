@@ -46,7 +46,7 @@ if __name__ == "__main__":
     if not MODEL_PATH.exists():
         print("  Notice: Model artifact not found. Training model at runtime from raw data...")
         from src.train import train_model
-        train_model(save_model=True)
+        train_model(save_artifacts=True)
         print("  Champion model trained successfully!\n")
 
     print("  Starting server... Press Ctrl+C to terminate.\n")

@@ -24,11 +24,11 @@ An end-to-end machine learning system and production API that predicts subjectiv
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-# Run automated tests (29 unit & integration tests)
-pytest -v
-
-# Run the complete pipeline (Ingestion -> Features -> Training -> Evaluation)
+# 1. Run the pipeline first to clean data, engineer features, and train/generate the model artifact (~3s)
 python run_pipeline.py
+
+# 2. Run automated test suite (29 unit & integration tests)
+pytest -v
 ```
 *(Requires the 5 raw CSVs in `data/` and OpenMP: `brew install libomp` on macOS).*
 
