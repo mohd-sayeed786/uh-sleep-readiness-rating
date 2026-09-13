@@ -512,7 +512,7 @@ SIMULATOR_HTML = """<!DOCTYPE html>
                       <span class="font-mono text-brand-emerald font-bold text-xs" id="val_sleep_z">+0.80 &sigma;</span>
                     </div>
                     <input type="range" id="param_sleep_z" min="-3.0" max="3.0" step="0.1" value="0.8"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange('sleep_z')">
+                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
                     <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
                       <span>-3.0 (Short)</span>
                       <span>0.0 (Average)</span>
@@ -526,7 +526,7 @@ SIMULATOR_HTML = """<!DOCTYPE html>
                       <span class="font-mono text-brand-emerald font-bold text-xs" id="val_sleep_debt">+20 min</span>
                     </div>
                     <input type="range" id="param_sleep_debt" min="-120" max="120" step="5" value="20"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange('sleep_debt')">
+                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
                     <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
                       <span>-120m (Debt)</span>
                       <span>0m</span>
@@ -825,14 +825,12 @@ SIMULATOR_HTML = """<!DOCTYPE html>
 
       // Compute Features
       const sleep_z = (rawSleep - USER_BASE.mean_sleep) / USER_BASE.std_sleep;
-      const sleep_debt = rawSleep - USER_BASE.mean_sleep;
       const deep_rem = rawDeep + rawRem;
       const hr_z = (rawHr - USER_BASE.mean_hr) / USER_BASE.std_hr;
       const hrv_z = (rawHrv - USER_BASE.mean_hrv) / USER_BASE.std_hrv;
 
-      // Sync into Features sliders
+      // Sync into Features sliders (param_sleep_debt remains independent)
       document.getElementById('param_sleep_z').value = Math.max(-3.0, Math.min(3.0, sleep_z)).toFixed(1);
-      document.getElementById('param_sleep_debt').value = Math.max(-120, Math.min(120, Math.round(sleep_debt)));
       document.getElementById('param_deep_rem').value = Math.max(30, Math.min(240, deep_rem));
       document.getElementById('param_hr_z').value = Math.max(-3.0, Math.min(3.0, hr_z)).toFixed(1);
       document.getElementById('param_hrv_z').value = Math.max(-3.0, Math.min(3.0, hrv_z)).toFixed(1);
@@ -845,17 +843,7 @@ SIMULATOR_HTML = """<!DOCTYPE html>
     }
 
     // When FEATURES change -> compute and sync RAW
-    function onParamChange(source) {
-      if (source === 'sleep_debt') {
-        const debt = parseFloat(document.getElementById('param_sleep_debt').value);
-        const z = debt / USER_BASE.std_sleep;
-        document.getElementById('param_sleep_z').value = Math.max(-3.0, Math.min(3.0, z)).toFixed(1);
-      } else if (source === 'sleep_z') {
-        const z = parseFloat(document.getElementById('param_sleep_z').value);
-        const debt = Math.round(z * USER_BASE.std_sleep);
-        document.getElementById('param_sleep_debt').value = Math.max(-120, Math.min(120, debt));
-      }
-
+    function onParamChange() {
       const sleep_z = parseFloat(document.getElementById('param_sleep_z').value);
       const deep_rem = parseFloat(document.getElementById('param_deep_rem').value);
       const hr_z = parseFloat(document.getElementById('param_hr_z').value);

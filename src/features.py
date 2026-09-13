@@ -30,6 +30,7 @@ def compute_days_since_event_series(
     """
     Computes days since condition was last true across user groups.
     Assigns by index to guarantee shape compatibility across all pandas versions.
+    Uses strictly past history to prevent target leakage.
     """
     output = pd.Series(np.nan, index=df.index, dtype=float)
     dates = pd.to_datetime(df["checkin_date"])
@@ -37,20 +38,18 @@ def compute_days_since_event_series(
     for uid, group in df.groupby("user_id"):
         last_event = pd.NaT
         for idx in group.index:
-            val = df.loc[idx, col] if col in df.columns else np.nan
             curr_date = dates.loc[idx]
 
-            if pd.notna(val):
-                if (direction == "above" and val >= threshold) or \
-                   (direction == "below" and val <= threshold):
-                    last_event = curr_date
-
-            if pd.notna(last_event) and last_event < curr_date:
+            # Assign days since prior event before updating with today's record
+            if pd.notna(last_event):
                 output.loc[idx] = float((curr_date - last_event).days)
 
+            val = df.loc[idx, col] if col in df.columns else np.nan
+            if pd.notna(val):
+                if (direction == "above" and val >= threshold) or (direction == "below" and val <= threshold):
+                    last_event = curr_date
+
     return output
-
-
 def engineer_features(base_df: pd.DataFrame) -> pd.DataFrame:
     """
     Given the merged base dataframe, compute the 13 features required for inference.
