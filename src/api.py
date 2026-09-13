@@ -71,7 +71,25 @@ class TrainParams(BaseModel):
     reg_alpha: Optional[float] = Field(default=0.0012, ge=0.0)
     reg_lambda: Optional[float] = Field(default=0.07, ge=0.0)
     save_model: bool = Field(default=True, description="Whether to archive old model and write new selected_model.pkl")
-    feature_cols: Optional[List[str]] = Field(default=None, description="Optional custom feature names to train on. Defaults to standard 21 features.")
+    feature_cols: Optional[List[str]] = Field(
+        default=None,
+        description="Optional custom feature names to train on. Leave empty/omitted to train on all standard 21 features."
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "max_depth": 3,
+                "learning_rate": 0.0268,
+                "n_estimators": 100,
+                "subsample": 0.67,
+                "colsample_bytree": 0.46,
+                "reg_alpha": 0.0012,
+                "reg_lambda": 0.07,
+                "save_model": True
+            }
+        }
+    }
 
 
 class SingleFeatureInput(BaseModel):
@@ -144,34 +162,20 @@ class RawContextInput(BaseModel):
 # API Endpoints
 # ---------------------------------------------------------------------------
 
-@app.get("/")
-def root():
-    """Root endpoint detailing API status and capabilities."""
-    return {
-        "service": "Ring AI Readiness Score API",
-        "version": "1.2.0",
-        "active_model": str(MODEL_PATH),
-        "versions_directory": str(MODEL_VERSIONS_DIR),
-        "description": "Predicts subjective morning recovery score (1-5) using ring sensors and waking context.",
-        "endpoints": {
-            "simulator": "GET /simulator (Interactive Web App)",
-            "health": "/health",
-            "model_versions": "GET /model/versions",
-            "model_rollback": "POST /model/rollback?version=v1.0",
-            "train": "POST /train",
-            "calculate_features": "POST /features/calculate",
-            "predict_single": "POST /inference/predict",
-            "explain_single": "POST /inference/explain",
-            "predict_batch": "POST /inference/predict-batch",
-            "run_tests": "POST /tests/run",
-        }
-    }
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+def root_ui():
+    """
+    Root endpoint serving the Ultrahuman interactive UI Simulator web dashboard.
+    (Excluded from Swagger REST schema).
+    """
+    return HTMLResponse(content=SIMULATOR_HTML, status_code=200)
 
 
-@app.get("/simulator", response_class=HTMLResponse)
+@app.get("/simulator", response_class=HTMLResponse, include_in_schema=False)
 def get_simulator_ui():
     """
-    Ultrahuman-styled interactive UI Simulator for real-time model controls and SHAP value explainability.
+    Direct alias serving the Ultrahuman interactive UI Simulator web dashboard.
+    (Excluded from Swagger REST schema).
     """
     return HTMLResponse(content=SIMULATOR_HTML, status_code=200)
 
@@ -325,9 +329,14 @@ def train_endpoint(params: TrainParams):
             "n_jobs": -1,
         }
 
+        cleaned_features = None
+        if params.feature_cols:
+            cleaned = [f.strip() for f in params.feature_cols if f and f.strip() and f.strip().lower() != "string"]
+            cleaned_features = cleaned if cleaned else None
+
         results = train_model(
             custom_params=custom_params,
-            feature_cols=params.feature_cols,
+            feature_cols=cleaned_features,
             save_artifacts=params.save_model,
             versions_dir=MODEL_VERSIONS_DIR,
         )

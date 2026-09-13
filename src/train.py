@@ -309,8 +309,13 @@ def train_model(
 
     labelled_df = feature_df.dropna(subset=[TARGET_COL]).copy()
 
-    # 2. Features selection
-    features_to_use = feature_cols if feature_cols is not None else FEATURE_NAMES
+    # 2. Features selection (sanitize and filter out dummy/placeholder values such as Swagger's 'string')
+    if feature_cols is not None:
+        valid_cols = [c.strip() for c in feature_cols if c and c.strip() and c.strip().lower() != "string"]
+        features_to_use = valid_cols if valid_cols else FEATURE_NAMES
+    else:
+        features_to_use = FEATURE_NAMES
+
     missing_cols = [c for c in features_to_use if c not in labelled_df.columns]
     if missing_cols:
         err_msg = f"Requested features not found in engineered table: {missing_cols}"

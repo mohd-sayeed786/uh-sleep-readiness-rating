@@ -14,33 +14,12 @@ SIMULATOR_HTML = """<!DOCTYPE html>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    let currentMainPage = 1;
-
     function switchMainPage(pageNum) {
-      currentMainPage = pageNum;
-      const p1 = document.getElementById('page1Container');
-      const p2 = document.getElementById('page2Container');
-      const btn1 = document.getElementById('btnNavPage1');
-      const btn2 = document.getElementById('btnNavPage2');
-
-      const activeClass = 'page-nav-active px-3.5 py-1.5 text-xs font-bold rounded-xl transition flex items-center space-x-1.5 cursor-pointer';
-      const inactiveClass = 'px-3.5 py-1.5 text-xs font-semibold rounded-xl text-gray-400 hover:text-white transition flex items-center space-x-1.5 cursor-pointer';
-
       if (pageNum === 1) {
-        if (p1) p1.classList.remove('hidden');
-        if (p2) p2.classList.add('hidden');
-        if (btn1) btn1.className = activeClass;
-        if (btn2) btn2.className = inactiveClass;
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
-        if (p1) p1.classList.add('hidden');
-        if (p2) p2.classList.remove('hidden');
-        if (btn1) btn1.className = inactiveClass;
-        if (btn2) btn2.className = activeClass;
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        if (latestShapData) {
-          renderShapBars(latestShapData.shap_breakdown, latestShapData.base_value);
-        }
+        const el = document.getElementById('page2Container');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
       }
     }
 
@@ -142,13 +121,13 @@ SIMULATOR_HTML = """<!DOCTYPE html>
         </div>
       </div>
 
-      <!-- Main Page Navigation (Page 1: Simulator vs Page 2: Biomarkers & SHAP) -->
+      <!-- Quick Scroll Anchor Navigation -->
       <div class="hidden md:flex items-center space-x-1.5 bg-[#0D111A] p-1 rounded-2xl border border-white/10 shadow-inner">
-        <button id="btnNavPage1" onclick="switchMainPage(1)" class="page-nav-active px-3.5 py-1.5 text-xs font-bold rounded-xl transition flex items-center space-x-1.5 cursor-pointer">
-          <span>📱</span> <span>Page 1: Ring Simulator</span>
+        <button onclick="window.scrollTo({ top: 0, behavior: 'smooth' })" class="px-3.5 py-1.5 text-xs font-bold rounded-xl transition flex items-center space-x-1.5 text-brand-emerald bg-brand-emerald/10 border border-brand-emerald/25 hover:bg-brand-emerald/20 cursor-pointer">
+          <span>📱</span> <span>Ring &amp; Controls</span>
         </button>
-        <button id="btnNavPage2" onclick="switchMainPage(2)" class="px-3.5 py-1.5 text-xs font-semibold rounded-xl text-gray-400 hover:text-white transition flex items-center space-x-1.5 cursor-pointer">
-          <span>📊</span> <span>Page 2: Biomarkers &amp; TreeSHAP</span>
+        <button onclick="document.getElementById('page2Container').scrollIntoView({ behavior: 'smooth' })" class="px-3.5 py-1.5 text-xs font-semibold rounded-xl text-gray-300 hover:text-white hover:bg-white/5 transition flex items-center space-x-1.5 cursor-pointer">
+          <span>📊</span> <span>Biomarkers &amp; TreeSHAP</span>
         </button>
       </div>
 
@@ -741,23 +720,13 @@ SIMULATOR_HTML = """<!DOCTYPE html>
 
       </div>
 
-      <!-- Bottom Navigation Bar for Page 1 -->
-      <div class="mt-4 flex flex-col sm:flex-row justify-between items-center bg-[#101522] border border-white/10 rounded-2xl p-3 px-5 gap-3">
-        <div class="flex items-center space-x-2 text-xs text-gray-400">
-          <span class="w-2 h-2 rounded-full bg-brand-emerald animate-pulse"></span>
-          <span class="font-medium">Page 1 of 2: Ring Dial Simulator &amp; 21 Control Features Active</span>
-        </div>
-        <button onclick="switchMainPage(2)" class="px-5 py-2 rounded-xl bg-brand-card hover:bg-white/10 border border-white/15 text-white font-bold text-xs flex items-center space-x-2 transition shadow-lg hover:border-brand-emerald/40 cursor-pointer">
-          <span>Explore Sleep Architecture &amp; TreeSHAP (Page 2)</span>
-          <span class="text-brand-emerald">&rarr;</span>
-        </button>
-      </div>
+
     </div>
 
     <!-- =================================================================== -->
     <!-- PAGE 2: SLEEP ARCHITECTURE & TREESHAP EXPLAINABILITY (PAGE 2)       -->
     <!-- =================================================================== -->
-    <div id="page2Container" class="hidden space-y-4">
+    <div id="page2Container" class="space-y-4 mt-6">
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         
         <!-- LEFT: Sleep Architecture & Autonomic Biomarkers (col-span-5) -->
@@ -910,17 +879,7 @@ SIMULATOR_HTML = """<!DOCTYPE html>
 
       </div>
 
-      <!-- Bottom Navigation Bar for Page 2 -->
-      <div class="mt-4 flex flex-col sm:flex-row justify-between items-center bg-[#101522] border border-white/10 rounded-2xl p-3 px-5 gap-3">
-        <button onclick="switchMainPage(1)" class="px-5 py-2 rounded-xl bg-brand-card hover:bg-white/10 border border-white/15 text-white font-bold text-xs flex items-center space-x-2 transition shadow-lg hover:border-brand-emerald/40 cursor-pointer">
-          <span class="text-brand-emerald">&larr;</span>
-          <span>Return to Ring Simulator &amp; Control Sliders (Page 1)</span>
-        </button>
-        <div class="flex items-center space-x-2 text-xs text-gray-400">
-          <span class="w-2 h-2 rounded-full bg-brand-blue animate-pulse"></span>
-          <span class="font-medium">Page 2 of 2: Sleep Architecture &amp; TreeSHAP Waterfall Active</span>
-        </div>
-      </div>
+
     </div>
 
   </main>

@@ -52,8 +52,8 @@ def test_restorative_deep_rem_total():
     assert feat["deep_rem_total"].iloc[0] == 150.0
 
 
-def test_all_13_features_produced():
-    """Ensure all 13 final selected features exist in output dataframe."""
+def test_all_21_features_produced():
+    """Ensure all 21 final selected features exist in output dataframe."""
     sample = pd.DataFrame({
         "user_id": ["UH-001", "UH-001"],
         "checkin_date": ["2026-03-01", "2026-03-02"],

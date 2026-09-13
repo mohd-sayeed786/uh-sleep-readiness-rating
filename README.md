@@ -163,11 +163,11 @@ When a new user begins using the ring:
 
 ## 6. Interactive Simulator & API Endpoints
 
-The interactive simulator (`http://localhost:8000/simulator`) features an uncluttered 2-page dashboard with matching viewport height and dedicated analytical depth:
+The interactive simulator (`http://localhost:8000/`) delivers a continuous, 1-page scrollable dashboard designed with generous breathing room, elongated controls, and dedicated analytical tiers on a single page:
 
-- **Page 1: Ring Readiness Simulator & Full-Length Control Deck**
-  - **Left Mobile Mirror:** Ultrahuman ring connected status, sleep/recovery/movement scores, radial readiness dial (e.g., `4.0 / 5 Optimal`, raw model output), and plain-language guidance cards (*Last Night's Rest*, *Today's Rhythm*, and *Tonight's Quick Win* with projected delta boost).
-  - **Right Control Deck (Full Height & Elongated Tabs):** Matches the left card height with generous breathing room and zero cramped scrollbars:
+- **Top Tier: Ring Readiness Simulator & Full-Length Control Deck**
+  - **Left Mobile Mirror:** Ultrahuman ring status, sleep/recovery/movement scores, radial readiness dial (e.g., `4.0 / 5 Optimal`, raw model output), and plain-language guidance cards (*Last Night's Rest*, *Today's Rhythm*, and *Tonight's Quick Win* with projected delta boost).
+  - **Right Control Deck (Full Height & Elongated Tabs):** Perfectly matches the left card height with generous spacing and zero cramped scrollbars:
     - **🔬 Raw Telemetry Tab:** Interactive sliders for raw sleep duration, deep sleep, REM sleep, resting HR, HRV RMSSD, alcohol units, and past feeling baseline; all 21 features update and live-sync in real time.
     - **⚙️ Engineered Features (21) Tab:** Full-width 3-column sub-tab navigation:
       - 🌙 *Sleep & Restorative (6 features)*: sleep duration z-score, sleep debt, restorative sleep volume, deep z-score, REM z-score, restorative sleep percentage.
@@ -175,8 +175,8 @@ The interactive simulator (`http://localhost:8000/simulator`) features an unclut
       - 🍷 *Alcohol & History (7 features)*: alcohol units, alcohol tier, alcohol $\times$ HRV interaction, 5-day rolling feeling mean, 7-day EWM feeling, and expanding historical feeling mean.
     - **Control Actions:** Quick preset buttons (`Optimal`, `Moderate`, `Alcohol`, `Deprived`), Day-1 cold-start simulator (`❄️ Day 1 Test`), and instant reset (`↺ Reset`).
 
-- **Page 2: Deep Sleep Architecture & TreeSHAP Explainability**
-  - **Left Deep Biomarkers Card:**
+- **Lower Tier (Smoothly Scrollable): Deep Sleep Architecture & TreeSHAP Explainability**
+  - **Left Deep Biomarkers Deck:**
     - *Sleep Architecture Breakdown:* Total sleep duration, 4-stage segmented bar (Deep 22%, REM 25%, Light 45%, Awake 8%), restorative volume, and sleep debt status.
     - *Autonomic Biomarker Grid:* Ring PPG sensor cards with live status indicators for Resting HR (BPM), HRV (RMSSD ms), Skin Temperature Deviation (°C), and Sleep Efficiency (5 Cycles consistency).
   - **Right TreeSHAP Explainability Waterfall:**
@@ -184,7 +184,7 @@ The interactive simulator (`http://localhost:8000/simulator`) features an unclut
     - Interactive filter pills: `Top 10 Drivers` (highest positive boosters), `Last 10 Drivers` (most negative drags), and `All 21 Features`.
     - Responsive 2-column signed waterfall with color-coded bars (Emerald = boosts readiness, Coral = penalizes score) and exact feature values.
 
-- **Seamless Navigation:** 1-click toggles in the top navbar (`📱 Page 1: Ring Simulator` vs `📊 Page 2: Biomarkers & TreeSHAP`) and bottom navigation pills allow instant transitions with live background synchronization across both views.
+- **Unified Single-Page Experience:** Both tiers live seamlessly on the same scrollable page with quick anchor scroll buttons in the top navbar (`📱 Ring & Controls` and `📊 Biomarkers & TreeSHAP`).
 - **Live Pipeline Retrain Modal (`⚡ Run Pipeline`):** Triggers end-to-end retraining directly from the simulator navbar; executes all 4 pipeline phases with live animated progress bars and displays holdout validation cards: **Holdout RMSE**, **Holdout $R^2$**, **Exact Accuracy**, and **Acc $\pm 1$ Class**.
 
 ### Key API Endpoints
