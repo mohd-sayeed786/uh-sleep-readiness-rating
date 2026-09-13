@@ -76,18 +76,18 @@ class TrainParams(BaseModel):
 
 class SingleFeatureInput(BaseModel):
     alcohol_units: Optional[float] = Field(default=0.0, description="Alcohol units consumed yesterday")
-    had_alcohol: Optional[float] = Field(default=0.0, description="Binary flag (1.0 if alcohol units > 0)")
-    alcohol_level: Optional[float] = Field(default=0.0, description="Ordinal: 0 (none), 1 (light <= 2), 2 (heavy > 2)")
-    week_of_year: Optional[int] = Field(default=15, ge=1, le=53, description="Calendar ISO week")
-    total_sleep_minutes_zscore: Optional[float] = Field(default=0.0, description="User z-score for total sleep minutes")
-    avg_hr_bpm_zscore: Optional[float] = Field(default=0.0, description="User z-score for resting heart rate")
-    avg_hrv_rmssd_ms_zscore: Optional[float] = Field(default=0.0, description="User z-score for HRV")
-    subjective_feeling_lag1: Optional[float] = Field(default=3.0, ge=1.0, le=5.0, description="Yesterday's feeling (1-5)")
+    had_alcohol: Optional[float] = Field(default=None, description="Binary flag (1.0 if alcohol units > 0)")
+    alcohol_level: Optional[float] = Field(default=None, description="Ordinal: 0 (none), 1 (light <= 2), 2 (heavy > 2)")
+    week_of_year: Optional[int] = Field(default=None, ge=1, le=53, description="Calendar ISO week")
+    total_sleep_minutes_zscore: Optional[float] = Field(default=None, description="User z-score for total sleep minutes")
+    avg_hr_bpm_zscore: Optional[float] = Field(default=None, description="User z-score for resting heart rate")
+    avg_hrv_rmssd_ms_zscore: Optional[float] = Field(default=None, description="User z-score for HRV")
+    subjective_feeling_lag1: Optional[float] = Field(default=None, ge=1.0, le=5.0, description="Yesterday's feeling (1-5)")
     days_since_bad_sleep: Optional[float] = Field(default=None, description="Days since last feeling <= 2")
     days_since_great_sleep: Optional[float] = Field(default=None, description="Days since last feeling >= 4")
-    checkin_seq_num: Optional[int] = Field(default=10, ge=1, description="Cumulative check-in count")
-    deep_rem_total: Optional[float] = Field(default=120.0, ge=0.0, description="Deep + REM sleep in minutes")
-    sleep_debt: Optional[float] = Field(default=0.0, description="Minutes sleep deficit vs user mean")
+    checkin_seq_num: Optional[int] = Field(default=None, ge=1, description="Cumulative check-in count")
+    deep_rem_total: Optional[float] = Field(default=None, ge=0.0, description="Deep + REM sleep in minutes")
+    sleep_debt: Optional[float] = Field(default=None, description="Minutes sleep deficit vs user mean")
 
 
 class BatchFeatureInput(BaseModel):
@@ -410,6 +410,11 @@ def predict_single_endpoint(input_data: SingleFeatureInput):
     try:
         predictor = get_predictor()
         feat_dict = input_data.model_dump()
+        if feat_dict.get("had_alcohol") is None and feat_dict.get("alcohol_units") is not None:
+            feat_dict["had_alcohol"] = 1.0 if float(feat_dict["alcohol_units"]) > 0 else 0.0
+        if feat_dict.get("alcohol_level") is None and feat_dict.get("alcohol_units") is not None:
+            u = float(feat_dict["alcohol_units"])
+            feat_dict["alcohol_level"] = 0.0 if u <= 0 else (1.0 if u <= 2.0 else 2.0)
         result = predictor.predict_single(feat_dict)
         return result
     except Exception as e:
@@ -426,6 +431,11 @@ def explain_single_endpoint(input_data: SingleFeatureInput):
     try:
         predictor = get_predictor()
         feat_dict = input_data.model_dump()
+        if feat_dict.get("had_alcohol") is None and feat_dict.get("alcohol_units") is not None:
+            feat_dict["had_alcohol"] = 1.0 if float(feat_dict["alcohol_units"]) > 0 else 0.0
+        if feat_dict.get("alcohol_level") is None and feat_dict.get("alcohol_units") is not None:
+            u = float(feat_dict["alcohol_units"])
+            feat_dict["alcohol_level"] = 0.0 if u <= 0 else (1.0 if u <= 2.0 else 2.0)
         result = predictor.explain_single(feat_dict)
         return result
     except Exception as e:

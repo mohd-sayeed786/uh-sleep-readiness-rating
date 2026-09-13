@@ -156,10 +156,9 @@ The interactive simulator (`http://localhost:8000/simulator`) offers:
 
 ## 7. What Would I Do With Two More Weeks?
 
-1. **Intraday Telemetry Sequences:** Train a 1D-CNN directly on the 5-minute raw sensor curves (`nightly_signals.csv.gz`) to extract nocturnal HR dip trajectories and autonomic slope changes.
-2. **Pre-Night Recency Window:** Restructure the recency window to strictly measure user events prior to bedtime, isolating daytime logs from evening check-ins.
-3. **On-Device CoreML Export:** Package the 13-feature tree into CoreML/TFLite (< 1 MB) for local, private on-device predictions in airplane mode.
-4. **Circadian Rhythm Features:** Extract sleep midpoint variance across weekdays vs weekends to model social jetlag.
+1. **Deeper Domain & Feature Engineering:** Spend more time researching sleep science and chronobiology to engineer richer domain features—such as circadian alignment (social jetlag via sleep midpoint variance), multi-day sleep debt decay curves, Sleep Regularity Index (SRI), and pre-bed meal/alcohol cutoff timing.
+2. **Sequential Deep Learning on 5-Min Telemetry:** Leverage the granular 5-minute sensor streams (`nightly_signals.csv.gz`) with sequence models (1D-CNNs, BiLSTMs, or TCNs) to capture overnight heart-rate dip curvature, HRV recovery trajectories, and sleep stage transitions.
+3. **LLM-Driven Personalized Recommendations:** Integrate an LLM API conditioned on user history, current telemetry, TreeSHAP feature drivers, and model counterfactual deltas to deliver empathetic, context-aware daily coaching tailored to the user's personal routine.
 
 ---
 

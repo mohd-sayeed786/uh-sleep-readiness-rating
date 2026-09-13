@@ -245,10 +245,18 @@ class ReadinessPredictor:
         clamped_raw = float(np.clip(raw_pred, 1.0, 5.0))
         rounded_pred = int(np.clip(np.round(clamped_raw), 1, 5))
 
-        # Cold start detection (e.g. no prior checkins or z-scores available)
+        # Cold start detection:
+        # A user is in cold start if:
+        # 1. Day-1 onboarding checkin (checkin_seq_num <= 1)
+        # 2. Or missing baseline history (both subjective_feeling_lag1 and total_sleep_minutes_zscore are NaN/absent)
+        seq_num = features.get("checkin_seq_num")
+        is_day_1 = seq_num is not None and not pd.isna(seq_num) and float(seq_num) <= 1.0
+
         is_cold_start = bool(
-            pd.isna(features.get("subjective_feeling_lag1")) and
-            pd.isna(features.get("total_sleep_minutes_zscore"))
+            is_day_1 or (
+                pd.isna(features.get("subjective_feeling_lag1")) and
+                pd.isna(features.get("total_sleep_minutes_zscore"))
+            )
         )
 
         has_alc = features.get("had_alcohol")
