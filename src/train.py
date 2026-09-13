@@ -283,6 +283,8 @@ def train_model(
     metadata_save_path: Optional[Path] = None,
     feature_list_save_path: Optional[Path] = None,
     versions_dir: Optional[Path] = None,
+    save_model: Optional[bool] = None,
+    **kwargs: Any,
 ) -> Dict[str, Any]:
     """
     Run the end-to-end training pipeline:
@@ -294,8 +296,12 @@ def train_model(
       6. Archive prior model & feature_list to version folder
       7. Save new model as active selected_model.pkl and update feature_list.json
     """
+    if save_model is not None:
+        save_artifacts = save_model
+
     start_time = time.time()
     logger.info("Starting model training pipeline...")
+    np.random.seed(RANDOM_SEED)
 
     # 1. Pipeline execution
     base_df = run_data_pipeline()

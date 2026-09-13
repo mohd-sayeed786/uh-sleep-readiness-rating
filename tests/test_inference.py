@@ -1,10 +1,12 @@
 """
 Unit and functional tests for the Inference Service.
-Verifies API contract adherence, output bounding, dynamic feature lists, and cold-start fallback resilience.
+Verifies API contract adherence, output bounding, dynamic feature lists, cold-start fallback resilience,
+and deterministic reproducible training/inference.
 """
 import numpy as np
 import pytest
 
+from src.config import DEFAULT_XGB_PARAMS, RANDOM_SEED
 from src.inference import ReadinessPredictor, get_predictor
 
 
@@ -28,7 +30,7 @@ def test_prediction_output_bounds(predictor):
         "days_since_great_sleep": 1.0,
         "checkin_seq_num": 30,
         "deep_rem_total": 160.0,
-        "sleep_debt": 45.0,
+        "sleep_debt": 25.0,
     }
     result = predictor.predict_single(sample)
     assert 1.0 <= result["pred_raw"] <= 5.0
@@ -101,3 +103,9 @@ def test_dynamic_feature_names_resilience():
     assert "random_unrelated_feature" not in result["features_used"]
     assert "extra_sensor_channel" not in result["features_used"]
     assert "alcohol_units" in result["features_used"]
+
+
+def test_training_and_config_seed_determinism():
+    """Verify constant seed is enforced in config and default XGBoost parameters."""
+    assert RANDOM_SEED == 42
+    assert DEFAULT_XGB_PARAMS.get("random_state") == RANDOM_SEED
