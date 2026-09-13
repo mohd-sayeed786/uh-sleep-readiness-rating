@@ -63,31 +63,47 @@ app = FastAPI(
 # ---------------------------------------------------------------------------
 
 class TrainParams(BaseModel):
-    max_depth: Optional[int] = Field(default=8, ge=2, le=16)
-    learning_rate: Optional[float] = Field(default=0.014, gt=0.0, le=1.0)
-    n_estimators: Optional[int] = Field(default=900, ge=50, le=3000)
-    subsample: Optional[float] = Field(default=0.75, gt=0.0, le=1.0)
-    colsample_bytree: Optional[float] = Field(default=0.82, gt=0.0, le=1.0)
-    reg_alpha: Optional[float] = Field(default=0.0038, ge=0.0)
-    reg_lambda: Optional[float] = Field(default=0.572, ge=0.0)
+    max_depth: Optional[int] = Field(default=3, ge=2, le=16)
+    learning_rate: Optional[float] = Field(default=0.0268, gt=0.0, le=1.0)
+    n_estimators: Optional[int] = Field(default=1699, ge=50, le=3000)
+    subsample: Optional[float] = Field(default=0.67, gt=0.0, le=1.0)
+    colsample_bytree: Optional[float] = Field(default=0.46, gt=0.0, le=1.0)
+    reg_alpha: Optional[float] = Field(default=0.0012, ge=0.0)
+    reg_lambda: Optional[float] = Field(default=0.07, ge=0.0)
     save_model: bool = Field(default=True, description="Whether to archive old model and write new selected_model.pkl")
-    feature_cols: Optional[List[str]] = Field(default=None, description="Optional custom feature names to train on. Defaults to standard 13 features.")
+    feature_cols: Optional[List[str]] = Field(default=None, description="Optional custom feature names to train on. Defaults to standard 21 features.")
 
 
 class SingleFeatureInput(BaseModel):
-    alcohol_units: Optional[float] = Field(default=0.0, description="Alcohol units consumed yesterday")
-    had_alcohol: Optional[float] = Field(default=None, description="Binary flag (1.0 if alcohol units > 0)")
+    # Tier 1+2 21 Features
+    had_alcohol: Optional[float] = Field(default=None, description="Binary flag: 1.0 if alcohol consumed, else 0.0")
     alcohol_level: Optional[float] = Field(default=None, description="Ordinal: 0 (none), 1 (light <= 2), 2 (heavy > 2)")
-    week_of_year: Optional[int] = Field(default=None, ge=1, le=53, description="Calendar ISO week")
-    total_sleep_minutes_zscore: Optional[float] = Field(default=None, description="User z-score for total sleep minutes")
+    deep_rem_total: Optional[float] = Field(default=None, ge=0.0, description="Deep + REM sleep volume (minutes)")
+    total_sleep_minutes_zscore: Optional[float] = Field(default=None, description="User z-score for sleep duration")
+    stress_index_z: Optional[float] = Field(default=None, description="Physiological stress index (HR z - HRV z)")
+    alcohol_units: Optional[float] = Field(default=0.0, description="Alcohol units consumed yesterday")
+    alcohol_x_hrv_z: Optional[float] = Field(default=None, description="Interaction: alcohol units * HRV z-score")
+    sleep_debt: Optional[float] = Field(default=None, description="Minutes sleep deficit/surplus vs user baseline")
+    rem_minutes_zscore: Optional[float] = Field(default=None, description="User z-score for REM sleep")
+    sleep_user_ratio: Optional[float] = Field(default=None, description="Tonight sleep / expanding mean sleep")
+    recovery_score: Optional[float] = Field(default=None, description="Autonomic recovery score (HRV z - HR z)")
     avg_hr_bpm_zscore: Optional[float] = Field(default=None, description="User z-score for resting heart rate")
+    deep_minutes_zscore: Optional[float] = Field(default=None, description="User z-score for deep sleep")
+    restorative_pct: Optional[float] = Field(default=None, description="Ratio of restorative sleep to total sleep")
     avg_hrv_rmssd_ms_zscore: Optional[float] = Field(default=None, description="User z-score for HRV")
+    feeling_roll5_mean: Optional[float] = Field(default=None, ge=1.0, le=5.0, description="Past 5 days rolling mean feeling")
+    feeling_ewm_7: Optional[float] = Field(default=None, ge=1.0, le=5.0, description="Exponential weighted mean feeling (span=7)")
+    hrv_user_ratio: Optional[float] = Field(default=None, description="Tonight HRV / expanding mean HRV")
+    deep_user_ratio: Optional[float] = Field(default=None, description="Tonight deep / expanding mean deep")
+    user_expanding_mean: Optional[float] = Field(default=None, ge=1.0, le=5.0, description="Expanding past mean feeling")
+    hr_user_ratio: Optional[float] = Field(default=None, description="Tonight HR / expanding mean HR")
+
+    # Optional legacy & auxiliary fields
     subjective_feeling_lag1: Optional[float] = Field(default=None, ge=1.0, le=5.0, description="Yesterday's feeling (1-5)")
     days_since_bad_sleep: Optional[float] = Field(default=None, description="Days since last feeling <= 2")
     days_since_great_sleep: Optional[float] = Field(default=None, description="Days since last feeling >= 4")
     checkin_seq_num: Optional[int] = Field(default=None, ge=1, description="Cumulative check-in count")
-    deep_rem_total: Optional[float] = Field(default=None, ge=0.0, description="Deep + REM sleep in minutes")
-    sleep_debt: Optional[float] = Field(default=None, description="Minutes sleep deficit vs user mean")
+    week_of_year: Optional[int] = Field(default=None, ge=1, le=53, description="Calendar ISO week")
 
 
 class BatchFeatureInput(BaseModel):
@@ -113,6 +129,11 @@ class RawContextInput(BaseModel):
     user_std_hr: Optional[float] = 5.0
     user_mean_hrv: Optional[float] = 45.0
     user_std_hrv: Optional[float] = 12.0
+    user_mean_deep: Optional[float] = 70.0
+    user_std_deep: Optional[float] = 20.0
+    user_mean_rem: Optional[float] = 75.0
+    user_std_rem: Optional[float] = 20.0
+    recent_feeling_mean: Optional[float] = 3.3
     subjective_feeling_lag1: Optional[float] = 3.0
     days_since_bad_sleep: Optional[float] = None
     days_since_great_sleep: Optional[float] = None
@@ -347,48 +368,102 @@ def calculate_features(raw: RawContextInput):
         had_alcohol = 1.0 if alcohol_units > 0 else 0.0
         alcohol_level = 0.0 if alcohol_units <= 0 else (1.0 if alcohol_units <= 2.0 else 2.0)
 
-        # Sleep z-score
+        # Sleep duration & debt
         if raw.total_sleep_minutes is not None:
             sleep_std = max(raw.user_std_sleep or 60.0, 0.01)
-            sleep_zscore = (raw.total_sleep_minutes - (raw.user_mean_sleep or 420.0)) / sleep_std
-            sleep_debt = raw.total_sleep_minutes - (raw.user_mean_sleep or 420.0)
+            sleep_mean = raw.user_mean_sleep or 420.0
+            sleep_zscore = (raw.total_sleep_minutes - sleep_mean) / sleep_std
+            sleep_debt = raw.total_sleep_minutes - sleep_mean
+            sleep_user_ratio = raw.total_sleep_minutes / max(sleep_mean, 1.0)
         else:
             sleep_zscore = np.nan
             sleep_debt = np.nan
+            sleep_user_ratio = np.nan
 
-        # HR z-score
-        if raw.avg_hr_bpm is not None:
-            hr_std = max(raw.user_std_hr or 5.0, 0.01)
-            hr_zscore = (raw.avg_hr_bpm - (raw.user_mean_hr or 62.0)) / hr_std
-        else:
-            hr_zscore = np.nan
-
-        # HRV z-score
-        if raw.avg_hrv_rmssd_ms is not None:
-            hrv_std = max(raw.user_std_hrv or 12.0, 0.01)
-            hrv_zscore = (raw.avg_hrv_rmssd_ms - (raw.user_mean_hrv or 45.0)) / hrv_std
-        else:
-            hrv_zscore = np.nan
-
-        # Restorative deep + REM
+        # Deep & REM stages
         deep = raw.deep_minutes or 0.0
         rem = raw.rem_minutes or 0.0
         deep_rem_total = deep + rem if (raw.deep_minutes is not None or raw.rem_minutes is not None) else np.nan
 
+        if raw.deep_minutes is not None:
+            deep_std = max(raw.user_std_deep or 20.0, 0.01)
+            deep_mean = raw.user_mean_deep or 70.0
+            deep_zscore = (raw.deep_minutes - deep_mean) / deep_std
+            deep_user_ratio = raw.deep_minutes / max(deep_mean, 1.0)
+        else:
+            deep_zscore = np.nan
+            deep_user_ratio = np.nan
+
+        if raw.rem_minutes is not None:
+            rem_std = max(raw.user_std_rem or 20.0, 0.01)
+            rem_mean = raw.user_mean_rem or 75.0
+            rem_zscore = (raw.rem_minutes - rem_mean) / rem_std
+        else:
+            rem_zscore = np.nan
+
+        restorative_pct = (deep_rem_total / raw.total_sleep_minutes) if (pd.notna(deep_rem_total) and raw.total_sleep_minutes and raw.total_sleep_minutes > 0) else np.nan
+
+        # Resting HR & HRV
+        if raw.avg_hr_bpm is not None:
+            hr_std = max(raw.user_std_hr or 5.0, 0.01)
+            hr_mean = raw.user_mean_hr or 62.0
+            hr_zscore = (raw.avg_hr_bpm - hr_mean) / hr_std
+            hr_user_ratio = raw.avg_hr_bpm / max(hr_mean, 1.0)
+        else:
+            hr_zscore = np.nan
+            hr_user_ratio = np.nan
+
+        if raw.avg_hrv_rmssd_ms is not None:
+            hrv_std = max(raw.user_std_hrv or 12.0, 0.01)
+            hrv_mean = raw.user_mean_hrv or 45.0
+            hrv_zscore = (raw.avg_hrv_rmssd_ms - hrv_mean) / hrv_std
+            hrv_user_ratio = raw.avg_hrv_rmssd_ms / max(hrv_mean, 1.0)
+        else:
+            hrv_zscore = np.nan
+            hrv_user_ratio = np.nan
+
+        # Autonomic stress & recovery balance
+        if pd.notna(hr_zscore) and pd.notna(hrv_zscore):
+            stress_index_z = hr_zscore - hrv_zscore
+            recovery_score = hrv_zscore - hr_zscore
+        else:
+            stress_index_z = np.nan
+            recovery_score = np.nan
+
+        # Alcohol x HRV interaction
+        alcohol_x_hrv_z = float(alcohol_units) * (0.0 if np.isnan(hrv_zscore) else float(hrv_zscore))
+
+        # Longitudinal feeling baselines
+        recent_feeling = raw.recent_feeling_mean or 3.3
+
         features_dict = {
-            "alcohol_units": float(alcohol_units),
             "had_alcohol": float(had_alcohol),
             "alcohol_level": float(alcohol_level),
-            "week_of_year": week_of_year,
+            "deep_rem_total": None if np.isnan(deep_rem_total) else round(float(deep_rem_total), 1),
             "total_sleep_minutes_zscore": None if np.isnan(sleep_zscore) else round(float(sleep_zscore), 4),
+            "stress_index_z": None if np.isnan(stress_index_z) else round(float(stress_index_z), 4),
+            "alcohol_units": float(alcohol_units),
+            "alcohol_x_hrv_z": round(float(alcohol_x_hrv_z), 4),
+            "sleep_debt": None if np.isnan(sleep_debt) else round(float(sleep_debt), 1),
+            "rem_minutes_zscore": None if np.isnan(rem_zscore) else round(float(rem_zscore), 4),
+            "sleep_user_ratio": None if np.isnan(sleep_user_ratio) else round(float(sleep_user_ratio), 4),
+            "recovery_score": None if np.isnan(recovery_score) else round(float(recovery_score), 4),
             "avg_hr_bpm_zscore": None if np.isnan(hr_zscore) else round(float(hr_zscore), 4),
+            "deep_minutes_zscore": None if np.isnan(deep_zscore) else round(float(deep_zscore), 4),
+            "restorative_pct": None if np.isnan(restorative_pct) else round(float(restorative_pct), 3),
             "avg_hrv_rmssd_ms_zscore": None if np.isnan(hrv_zscore) else round(float(hrv_zscore), 4),
+            "feeling_roll5_mean": recent_feeling,
+            "feeling_ewm_7": recent_feeling,
+            "hrv_user_ratio": None if np.isnan(hrv_user_ratio) else round(float(hrv_user_ratio), 4),
+            "deep_user_ratio": None if np.isnan(deep_user_ratio) else round(float(deep_user_ratio), 4),
+            "user_expanding_mean": recent_feeling,
+            "hr_user_ratio": None if np.isnan(hr_user_ratio) else round(float(hr_user_ratio), 4),
+            # Auxiliary / Legacy fields
             "subjective_feeling_lag1": raw.subjective_feeling_lag1,
             "days_since_bad_sleep": raw.days_since_bad_sleep,
             "days_since_great_sleep": raw.days_since_great_sleep,
             "checkin_seq_num": raw.checkin_seq_num,
-            "deep_rem_total": None if np.isnan(deep_rem_total) else round(float(deep_rem_total), 1),
-            "sleep_debt": None if np.isnan(sleep_debt) else round(float(sleep_debt), 1),
+            "week_of_year": week_of_year,
         }
 
         return {

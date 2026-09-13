@@ -17,7 +17,7 @@ def test_api_health():
     data = response.json()
     assert data["status"] == "healthy"
     assert data["model_loaded"] is True
-    assert data["feature_count"] == 13
+    assert data["feature_count"] == 21
     assert "selected_model.pkl" in data["active_model"]
 
 
@@ -94,7 +94,7 @@ def test_api_explain_endpoint():
     assert "pred_raw" in data
     assert "base_value" in data
     assert "shap_breakdown" in data
-    assert len(data["shap_breakdown"]) == 13
+    assert len(data["shap_breakdown"]) == 21
     assert "total_shap_impact" in data
     # Check structure of each SHAP item
     first_item = data["shap_breakdown"][0]
@@ -109,7 +109,7 @@ def test_api_simulator_endpoint():
     response = client.get("/simulator")
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
-    assert "ULTRAHUMAN" in response.text
+    assert "ultrahuman" in response.text.lower()
     assert "gaugeArc" in response.text
     assert "TreeSHAP" in response.text
 

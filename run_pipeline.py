@@ -79,9 +79,9 @@ def main():
     parser.add_argument("--train", action="store_true", default=True, help="Train XGBoost model")
     parser.add_argument("--eval", action="store_true", default=True, help="Run slice and baseline evaluation")
     parser.add_argument("--save", action="store_true", default=True, help="Save model artifacts")
-    parser.add_argument("--n-estimators", type=int, default=900, help="Number of estimators for XGBoost")
-    parser.add_argument("--learning-rate", type=float, default=0.014, help="Learning rate")
-    parser.add_argument("--max-depth", type=int, default=8, help="Tree max depth")
+    parser.add_argument("--n-estimators", type=int, default=1699, help="Number of estimators for XGBoost")
+    parser.add_argument("--learning-rate", type=float, default=0.0268, help="Learning rate")
+    parser.add_argument("--max-depth", type=int, default=3, help="Tree max depth")
     parser.add_argument(
         "--log-level",
         type=str,
@@ -112,12 +112,12 @@ def main():
 
     # 2. Feature Engineering
     t0 = time.time()
-    logger.info("[Phase 2/4] Engineering 13 selected features...")
-    with PhaseSpinner("Phase 2/4: Engineering 13 physiological features across 120 users..."):
+    logger.info("[Phase 2/4] Engineering {len(FEATURE_NAMES)} selected features...")
+    with PhaseSpinner("Phase 2/4: Engineering {len(FEATURE_NAMES)} physiological features across 120 users..."):
         feat_df = engineer_features(base_df)
     t_feat = time.time() - t0
     logger.info(f"  -> Feature table shape: {feat_df.shape}")
-    logger.info(f"  -> Verified 13 features: {FEATURE_NAMES}")
+    logger.info(f"  -> Verified {len(FEATURE_NAMES)} features: {FEATURE_NAMES}")
     logger.info(f"  -> Feature engineering completed in {t_feat:.2f}s")
 
     # 3. Model Training

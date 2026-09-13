@@ -24,8 +24,7 @@ htmlcov/
 .DS_Store
 
 # Logs
-logs/*.log
-!logs/.gitkeep
+logs/
 
 # Data and image assets untracked per user request
 data/

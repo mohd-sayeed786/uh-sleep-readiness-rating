@@ -31,21 +31,29 @@ MODEL_METADATA_PATH = MODEL_DIR / "model_metadata.json"
 # Target column
 TARGET_COL = "subjective_feeling"
 
-# Selected 13 Features
+# Selected 21 Features (Enriched Tier 1+2 Model)
 FEATURE_NAMES: List[str] = [
-    "alcohol_units",
     "had_alcohol",
     "alcohol_level",
-    "week_of_year",
-    "total_sleep_minutes_zscore",
-    "avg_hr_bpm_zscore",
-    "avg_hrv_rmssd_ms_zscore",
-    "subjective_feeling_lag1",
-    "days_since_bad_sleep",
-    "days_since_great_sleep",
-    "checkin_seq_num",
     "deep_rem_total",
+    "total_sleep_minutes_zscore",
+    "stress_index_z",
+    "alcohol_units",
+    "alcohol_x_hrv_z",
     "sleep_debt",
+    "rem_minutes_zscore",
+    "sleep_user_ratio",
+    "recovery_score",
+    "avg_hr_bpm_zscore",
+    "deep_minutes_zscore",
+    "restorative_pct",
+    "avg_hrv_rmssd_ms_zscore",
+    "feeling_roll5_mean",
+    "feeling_ewm_7",
+    "hrv_user_ratio",
+    "deep_user_ratio",
+    "user_expanding_mean",
+    "hr_user_ratio",
 ]
 
 # Random seed for reproducibility
@@ -56,17 +64,17 @@ TRAIN_RATIO = 0.70
 VAL_RATIO = 0.15
 TEST_RATIO = 0.15
 
-# Default Tuned XGBoost Parameters from Optuna optimization
+# Default Tuned XGBoost Parameters from Optuna optimization (21-feature model)
 DEFAULT_XGB_PARAMS: Dict[str, Any] = {
-    "max_depth": 8,
-    "learning_rate": 0.013895075698868577,
-    "n_estimators": 900,
-    "subsample": 0.7559678262921059,
-    "colsample_bytree": 0.818399922679552,
-    "reg_alpha": 0.003804459928933268,
-    "reg_lambda": 0.5719545331877559,
-    "min_child_weight": 9,
-    "gamma": 0.42693535444133257,
+    "max_depth": 3,
+    "learning_rate": 0.02676795328269727,
+    "n_estimators": 1699,
+    "subsample": 0.6688454150272058,
+    "colsample_bytree": 0.4615855771876036,
+    "reg_alpha": 0.001241859408864291,
+    "reg_lambda": 0.0698072326507175,
+    "min_child_weight": 6,
+    "gamma": 0.8706521942241263,
     "random_state": RANDOM_SEED,
     "n_jobs": -1
 }

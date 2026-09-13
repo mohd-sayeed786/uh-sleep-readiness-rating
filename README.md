@@ -9,11 +9,16 @@ An end-to-end machine learning system and production API that predicts subjectiv
 | Dimension | Specification / Result |
 |---|---|
 | **Objective** | Predict subjective recovery feeling (1 to 5) before morning check-in using overnight ring telemetry and daytime habits. |
-| **Model** | Tuned 13-feature **XGBoost Regressor** with early stopping. |
-| **Holdout Metrics** | **Test RMSE: 0.286** (vs 1.018 user baseline — **71.9% error reduction**) \| **Test $R^2$: 0.921**. |
-| **Accuracy** | **89.5% exact class match** \| **100.0% within $\pm 1$ class** (zero errors $\ge 2$ classes). |
-| **Inference Latency** | **< 15 ms** per request with exact TreeSHAP marginal attribution. |
-| **Deployment** | FastAPI service (`run_api.py`) + Interactive Ultrahuman Simulator UI + Automated fallback circuit breaker. |
+| **Model** | Tuned 21-feature **XGBoost Regressor** (`xgboost_tuned_reduced.pkl`, depth=3, 1,699 trees, colsample=0.46). |
+| **Holdout Metrics** | **Test RMSE: 0.556** (vs 1.016 baseline — **45.3% error reduction**) \| **Test $R^2$: 0.6989** (Val $R^2$: 0.7052, Train $R^2$: 0.7672). |
+| **Accuracy** | **65.17% exact class match** \| **98.50% within $\pm 1$ class** (zero severe outliers). |
+| **Overfit Gap** | **0.0619** ($	ext{Train } R^2 - 	ext{Val } R^2$), confirming strong generalization under temporal drift. |
+| **Inference Latency** | **< 10 ms** per request with native Booster TreeSHAP marginal attribution. |
+| **Deployment** | FastAPI service (`run_api.py`) + Interactive Ultrahuman Simulator UI (1-page categorized layout) + Automated model versioning & rollback. |
+
+> [!NOTE]
+> **Comprehensive Development & Modeling Report:**  
+> For detailed understanding of the data cleaning journey, hardware anomaly resolutions, 260-to-21 feature reduction, Optuna hyperparameter optimization, and the sequential decision history (D-001 to D-022), refer to [`MODEL_TRAINING_REPORT.md`](model_training_notebooks/MODEL_TRAINING_REPORT.md).
 
 ---
 
@@ -24,10 +29,10 @@ An end-to-end machine learning system and production API that predicts subjectiv
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-# 1. Run the pipeline first to clean data, engineer features, and train/generate the model artifact (~3s)
+# 1. Run the pipeline to clean data, engineer 21 features, and validate the model artifact (~3s)
 python run_pipeline.py
 
-# 2. Run automated test suite (29 unit & integration tests)
+# 2. Run automated test suite (30 unit & integration tests)
 pytest -v
 ```
 *(Requires the 5 raw CSVs in `data/` and OpenMP: `brew install libomp` on macOS).*
@@ -43,6 +48,14 @@ pytest -v
    - **Service Health Check:** [http://localhost:8000/health](http://localhost:8000/health)
 
 *(Optional: `python run_simulator.py` health-checks the API in the background and opens your browser once the server is ready).*
+
+### Research & Training Notebooks
+The data science and modeling workflow is sequentially documented in [`model_training_notebooks/`](model_training_notebooks):
+- `Data Cleaning and EDA.py`: Data ingestion, sentinel handling, and exploratory distributions.
+- `Feature Engineering.py`: Derivation of candidate features across 4 physiological pillars.
+- `Model Training.py`: Optuna Bayesian tuning, temporal validation, and feature reduction to 21 features.
+- `Inference Pipeline — Readiness Score.py`: Reference production pipeline and cold-start simulation.
+- `MODEL_TRAINING_REPORT.md`: Comprehensive end-to-end report covering all methodology and decision logs.
 
 ---
 
@@ -60,30 +73,40 @@ Raw wearable telemetry has edge cases that silently corrupt model training if in
 
 ---
 
-## 3. Feature Selection: The 13 Production Features
+## 3. Feature Engineering: The 21 Production Features
 
-A compact 13-feature schema was selected over the full 57-feature candidate pool:
+Through extensive domain exploration and feature reduction, a 21-feature schema was distilled from 260 engineered candidate features. The features map into four physiological pillars:
 
-| Feature | Category | Rationale |
-|---|---|---|
-| `alcohol_units` | Behavioural | Toxic dose suppressing REM sleep and elevating nocturnal resting heart rate. |
-| `had_alcohol` | Behavioural | Binary indicator distinguishing zero intake from any alcohol consumption. |
-| `alcohol_level` | Behavioural | Categorical tier: 0 (None), 1 (Light $\le 2$ units), 2 (Heavy $> 2$ units). |
-| `week_of_year` | Temporal | Controls for seasonal fatigue, holiday clusters, and circadian shifts. |
-| `total_sleep_minutes_zscore` | Normalized Sensor | User-standardized sleep duration; normalizes short vs long sleepers. |
-| `avg_hr_bpm_zscore` | Normalized Sensor | Elevated resting HR reflects autonomic strain or recovery debt. |
-| `avg_hrv_rmssd_ms_zscore` | Normalized Sensor | Parasympathetic tone; positive HRV deviation strongly correlates with recovery. |
-| `subjective_feeling_lag1` | Autoregressive | Previous morning's feeling; captures psychological momentum and baseline mood. |
-| `days_since_bad_sleep` | Event Recency | Days elapsed since feeling $\le 2$; tracks cumulative fatigue compounding. |
-| `days_since_great_sleep` | Event Recency | Days elapsed since feeling $\ge 4$; tracks sustained recovery streaks. |
-| `checkin_seq_num` | Behavioural | User engagement count; controls for app onboarding novelty effects. |
-| `deep_rem_total` | Sleep Architecture | Total minutes of restorative sleep stages ($\text{Deep} + \text{REM}$). |
-| `sleep_debt` | Normalized Sensor | Minutes of sleep surplus or deficit relative to the user's historical norm. |
+### Physiological Feature Pillars
 
-**Why 13 features?**
-1. **Identical Accuracy:** Test $R^2$ with 13 features (`0.921`) matched the full 57-feature baseline (`0.917`).
-2. **Missing-Ring Resilience:** When a user skips wearing the ring (`has_session_data = 0`), the model falls back cleanly on daytime context and momentum without missing collinear features.
-3. **Sub-4ms TreeSHAP:** Low dimensionality allows real-time exact TreeSHAP attribution on every request.
+| Feature | Category | Definition / Formula | Biological Rationale |
+|---|---|---|---|
+| `had_alcohol` | Alcohol & Lifestyle | Binary: $1$ if `alcohol_units` $> 0$, else $0$ | Distinguishes sober nights from nights with metabolic alcohol processing. |
+| `alcohol_level` | Alcohol & Lifestyle | Categorical tier: 0 (None), 1 (Light $\le 2$), 2 (Heavy $> 2$) | Captures dose-dependent degradation of nocturnal autonomic stability. |
+| `alcohol_units` | Alcohol & Lifestyle | Total units consumed yesterday evening | Quantifies absolute toxic load suppressing REM sleep and elevating resting heart rate. |
+| `alcohol_x_hrv_z` | Alcohol & Lifestyle | $	ext{alcohol\_units} 	imes 	ext{avg\_hrv\_zscore}$ | Interaction term: captures compound vulnerability when alcohol is consumed under low autonomic reserve. |
+| `total_sleep_minutes_zscore` | Sleep Architecture | $(S - \mu_S) / \sigma_S$ (user expanding baseline) | Normalizes individual sleep requirements (e.g., 6h natural short sleepers vs 9h sleepers). |
+| `deep_minutes_zscore` | Sleep Architecture | $(D - \mu_D) / \sigma_D$ (user expanding baseline) | Normalized deep sleep volume; governs physical cellular repair and growth hormone release. |
+| `rem_minutes_zscore` | Sleep Architecture | $(R - \mu_R) / \sigma_R$ (user expanding baseline) | Normalized REM sleep volume; governs emotional regulation and cognitive memory consolidation. |
+| `deep_rem_total` | Sleep Architecture | $	ext{deep\_minutes} + 	ext{rem\_minutes}$ | Total absolute volume of restorative sleep stages. |
+| `restorative_pct` | Sleep Architecture | $(	ext{deep} + 	ext{rem}) / 	ext{total\_sleep\_minutes}$ | Restorative sleep efficiency; isolates proportion of sleep spent in restorative phases vs light/wake. |
+| `sleep_debt` | Sleep Architecture | $	ext{total\_sleep\_minutes} - \mu_{S,	ext{user}}$ | Minute surplus or deficit against personal historical rolling requirement. |
+| `avg_hr_bpm_zscore` | Autonomic Recovery | $(	ext{HR} - \mu_{	ext{HR}}) / \sigma_{	ext{HR}}$ | Elevated resting HR signals systemic stress, late meals, infection, or dehydration. |
+| `avg_hrv_rmssd_ms_zscore` | Autonomic Recovery | $(	ext{HRV} - \mu_{	ext{HRV}}) / \sigma_{	ext{HRV}}$ | Parasympathetic tone; positive deviation strongly signals nervous system readiness. |
+| `stress_index_z` | Autonomic Recovery | $	ext{HR}_{z} - 	ext{HRV}_{z}$ | Composite autonomic stress index; spikes when HR is elevated while HRV is suppressed. |
+| `recovery_score` | Autonomic Recovery | $	ext{HRV}_{z} - 	ext{HR}_{z}$ | Net autonomic balance; positive when parasympathetic recovery outpaces cardiovascular strain. |
+| `sleep_user_ratio` | Baseline Ratios | $	ext{total\_sleep\_minutes} / \mu_{S,	ext{user}}$ | Tonight's sleep volume relative to expanding personal historical baseline. |
+| `deep_user_ratio` | Baseline Ratios | $	ext{deep\_minutes} / \mu_{D,	ext{user}}$ | Tonight's deep stage duration relative to personal historical mean. |
+| `hr_user_ratio` | Baseline Ratios | $	ext{avg\_hr\_bpm} / \mu_{	ext{HR},	ext{user}}$ | Heart rate ratio relative to user baseline; values $> 1.0$ indicate incomplete cardiac recovery. |
+| `hrv_user_ratio` | Baseline Ratios | $	ext{avg\_hrv\_rmssd\_ms} / \mu_{	ext{HRV},	ext{user}}$ | HRV ratio relative to user baseline; values $> 1.0$ indicate strong parasympathetic activity. |
+| `feeling_roll5_mean` | Historical Feeling | 5-day backward rolling mean of `subjective_feeling` | Captures recent multi-day psychological momentum and mood trajectory. |
+| `feeling_ewm_7` | Historical Feeling | Exponential weighted moving average ($lpha = 2 / (7 + 1)$) | Exponentially decays older check-ins to prioritize recent recovery experiences. |
+| `user_expanding_mean` | Historical Feeling | Cumulative expanding mean of user feelings up to $D-1$ | User subjective baseline anchor; calibrates whether a user naturally rates strictly or leniently. |
+
+**Why 21 features?**
+1. **Balanced Representation:** Blends raw sleep architecture, autonomic balance ratios, lifestyle inputs, and autoregressive psychological momentum.
+2. **Minimal Overfitting:** Controlled feature depth (`max_depth=3`) and feature subsampling (`colsample_bytree=0.4616`) prevent the model from memorizing individual users, keeping the overfit gap at just **0.0619**.
+3. **Sub-10ms Exact TreeSHAP:** Tree structure allows zero-latency exact SHAP attribution calculation for all 21 features simultaneously via XGBoost booster matrix operations.
 
 ---
 
@@ -96,59 +119,56 @@ Evaluated using a chronological 70 / 15 / 15 temporal split by check-in date:
 
 ### Model Comparison
 
-| Model | Train RMSE | Val RMSE | Test RMSE | Test $R^2$ | Exact Acc (%) | Acc $\pm 1$ Class (%) |
-|---|---|---|---|---|---|---|
-| **Global Mean Baseline** | 1.018 | 1.014 | 1.016 | 0.000 | 38.2% | 85.6% |
-| **User Historical Mean** | 0.985 | 1.012 | 1.018 | -0.003 | 38.2% | 86.4% |
-| **Random Forest (500 Trees)** | 0.412 | 0.385 | 0.379 | 0.860 | 79.4% | 98.9% |
-| **LightGBM Regressor** | 0.285 | 0.312 | 0.306 | 0.909 | 86.8% | 99.8% |
-| **XGBoost (Full 57 Features)** | 0.224 | 0.301 | 0.292 | 0.917 | 88.5% | 100.0% |
-| **XGBoost (Selected 13 Features)** | **0.285** | **0.294** | **0.286** | **0.921** | **89.5%** | **100.0%** |
+| Model | Train $R^2$ | Val $R^2$ | Test RMSE | Test $R^2$ | Exact Acc (%) | Acc $\pm 1$ Class (%) | Overfit Gap |
+|---|---|---|---|---|---|---|---|
+| **Global Mean Baseline** | 0.0000 | 0.0000 | 1.016 | 0.0000 | 38.2% | 85.6% | 0.0000 |
+| **User Historical Mean** | 0.0410 | -0.0020 | 1.018 | -0.0030 | 38.2% | 86.4% | 0.0430 |
+| **XGBoost (Tuned 21 Features)** | **0.7672** | **0.7052** | **0.556** | **0.6989** | **65.17%** | **98.50%** | **0.0619** |
 
 ### Key Observations
-- **71.9% Error Reduction:** Test RMSE drops from 1.018 (user baseline) to **0.286**.
-- **Bound Guarantees:** 100.0% of predictions are within $\pm 1$ class; zero predictions deviate by $\ge 2$ classes.
-- **Generalization:** Train $R^2$ (`0.920`) vs Val $R^2$ (`0.920`) confirms strong regularization.
-- **Sensor-Off Nights:** RMSE is **0.287** when the ring was not worn vs **0.285** with full sensor telemetry, demonstrating robust fallback on daytime context.
+- **45.3% Error Reduction:** Test RMSE drops from 1.016 (global baseline) to **0.556**.
+- **Discrete Class Reliability:** **98.50% of predictions fall within $\pm 1$ class**, with **65.17% exact matches** across the 5 discrete score tiers.
+- **Strong Generalization:** The difference between Train $R^2$ (0.7672) and Test $R^2$ (0.6989) is only 0.0683, demonstrating that early stopping (best iteration: 510) and shallow tree depth (depth=3) successfully prevented overfitting on historical records.
+- **Missing Sensor Resilience:** When ring sensor telemetry is absent on any given night, XGBoost's default split routing gracefully leverages daytime context and historical feeling baselines without crashing or requiring ad-hoc heuristic imputation.
 
 ---
 
 ## 5. Production Design & User Experience
 
-### UX: Category Tiers over Raw Numbers
-Displaying a raw 1–5 score invites subjective friction. Continuous model predictions are mapped to qualitative tiers with actionable advice:
-- **Optimal (4.0–5.0):** Strong autonomic recovery. Recommended for peak training load.
-- **Moderate (2.6–3.9):** Baseline recovery. Suitable for standard daily demands.
-- **Recovery (1.0–2.5):** Elevated resting HR or sleep deficit. Prioritize hydration and light restorative movement.
+### Daily Rhythm & Contextual Guidance
+Displaying an ungrounded raw decimal invites confusion. The engine couples continuous predictions with actionable, user-friendly guidance:
+1. **Last Night's Rest (Recovery Assessment):** Plain-language explanation of overnight autonomic recovery and restorative sleep stages (e.g., *"Rest was a bit choppy (2.86/5). 2.0 drinks kept heart rate elevated & 40m sleep deficit — your body worked harder than usual overnight."*).
+2. **Today's Rhythm (Daily Pacing):** Clear, approachable activity guidance (e.g., *"Take things easy today. Stick to gentle walks or light movement, drink plenty of water, and treat yourself to an earlier bedtime tonight."*).
+3. **Tonight's Quick Win + Tomorrow's Boost (Model-Linked Counterfactual):** Evaluates real-time counterfactual interventions through the active XGBoost model to project the exact score delta the user can earn tomorrow (e.g., *"Head to bed 45 mins earlier to erase sleep debt and reset energy (+0.44 pts → 3.60)"*).
 
-### Cold-Start Strategy (Day 1–3)
-When historical user baselines ($\mu_u, \sigma_u$) are unavailable:
-- The service flags `is_cold_start = True` and substitutes demographic cohort medians (`age`, `sex`).
-- The UI communicates baseline calibration status to the user. Rolling personalization activates on Day 4.
-
-### Drift Monitoring & Fallback Circuit Breaker
-- **Telemetry Drift:** Population Stability Index (PSI) tracks sensor stream shifts (`avg_hr_bpm`, `avg_hrv_rmssd_ms`).
-- **Kill-Switch:** If PSI breaches 0.25 or service errors exceed 0.5%, an automated circuit breaker routes inference to the legacy heuristic score, alerting the on-call engineer.
+### Cold-Start Strategy (Day 1 Onboarding)
+When a new user begins using the ring:
+- The system flags `is_cold_start = True` whenever `checkin_seq_num <= 1` or when autoregressive features (`feeling_roll5_mean`, `user_expanding_mean`, `feeling_ewm_7`) and baseline z-scores are absent (`NaN`).
+- XGBoost natively routes missing baseline features along default tree branches, anchoring predictions to the population prior (~3.0–3.3 / Moderate tier).
+- The UI transparently indicates calibration mode while cumulative personal baselines accumulate over the initial check-ins.
 
 ---
 
 ## 6. Interactive Simulator & API Endpoints
 
-The interactive simulator (`http://localhost:8000/simulator`) offers:
-- **Left Column:** Ultrahuman mobile readiness widget (radial dial, readiness pill, recovery guidance card, sensor summary).
-- **Right Column (Tab-Driven):**
-  - **Raw Telemetry Tab:** Sliders for raw sleep minutes, resting HR, HRV, and alcohol; auto-calculates engineered features.
-  - **Engineered Features Tab:** Direct control over z-scores, sleep debt, and lags.
-  - **TreeSHAP Tab:** Real-time marginal attribution bars showing positive and negative drivers of the prediction.
+The interactive simulator (`http://localhost:8000/simulator`) provides a single-page control dashboard:
+- **Left Mobile Mirror:** Ultrahuman ring dial, readiness pill, recovery guidance cards, sleep architecture breakdowns, and autonomic biomarker cards.
+- **Right Control Deck (Tabbed 1-Page Layout):**
+  - **Raw Data Tab:** Sliders for raw sleep minutes, deep sleep, REM sleep, resting HR, HRV, alcohol units, and past feeling baseline; automatically computes and live-syncs all 21 features.
+  - **Engineered Features Tab:** Categorized into 3 sub-tabs keeping the UI clean and accessible:
+    - 🌙 *Sleep & Restorative (6 features)*: duration z-score, sleep debt, restorative sleep volume, deep z-score, REM z-score, restorative percentage.
+    - 💓 *Autonomic & Stress (8 features)*: resting HR z-score, HRV z-score, stress index, recovery score, and expanding baseline ratios.
+    - 🍷 *Alcohol & History (7 features)*: alcohol units, alcohol tier, alcohol $	imes$ HRV interaction, 5-day rolling feeling, 7-day EWM feeling, expanding historical mean.
+  - **SHAP Values Tab:** Real-time 21-feature TreeSHAP waterfall list displaying population base value, net contribution sum, and sorted positive/negative drivers.
 
 ### Key API Endpoints
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/health` | Service health, active model status, and available versions. |
-| `POST` | `/inference/predict` | Single prediction with cold-start detection. |
-| `POST` | `/inference/explain` | Real-time prediction with exact TreeSHAP contributions. |
-| `POST` | `/features/calculate` | Transform raw sensor metrics into model features. |
-| `GET` | `/model/versions` | List archived model checkpoints. |
+| `GET` | `/health` | Service health, active model path, 21 feature list, and rollback versions. |
+| `POST` | `/inference/predict` | Single prediction with cold-start detection and model-linked recommendations. |
+| `POST` | `/inference/explain` | Real-time prediction with exact 21-feature TreeSHAP attributions. |
+| `POST` | `/features/calculate` | Transform raw sensor metrics into the 21 engineered model features. |
+| `GET` | `/model/versions` | List archived model checkpoints (`selected_model_vX.X.pkl`). |
 | `POST` | `/model/rollback` | Roll back active model to any prior version. |
 | `POST` | `/train` | Retrain from raw data with automatic version archiving. |
 
@@ -159,6 +179,7 @@ The interactive simulator (`http://localhost:8000/simulator`) offers:
 1. **Deeper Domain & Feature Engineering:** Spend more time researching sleep science and chronobiology to engineer richer domain features—such as circadian alignment (social jetlag via sleep midpoint variance), multi-day sleep debt decay curves, Sleep Regularity Index (SRI), and pre-bed meal/alcohol cutoff timing.
 2. **Sequential Deep Learning on 5-Min Telemetry:** Leverage the granular 5-minute sensor streams (`nightly_signals.csv.gz`) with sequence models (1D-CNNs, BiLSTMs, or TCNs) to capture overnight heart-rate dip curvature, HRV recovery trajectories, and sleep stage transitions.
 3. **LLM-Driven Personalized Recommendations:** Integrate an LLM API conditioned on user history, current telemetry, TreeSHAP feature drivers, and model counterfactual deltas to deliver empathetic, context-aware daily coaching tailored to the user's personal routine.
+4. **Expanded Pipeline Testing & AI Code Verification:** Conduct deeper manual sanity checks and build broader edge-case test suites across the data and feature pipelines to thoroughly stress-test boundary conditions and establish total confidence in all AI-assisted code implementations.
 
 ---
 

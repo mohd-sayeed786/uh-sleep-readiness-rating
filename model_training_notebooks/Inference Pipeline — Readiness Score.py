@@ -3,7 +3,7 @@
 # MAGIC %md
 # MAGIC # Inference Pipeline — Readiness Score
 # MAGIC
-# MAGIC End-to-end pipeline that reads raw CSVs, cleans data exactly as training did, engineers the 13 final features, and predicts morning `subjective_feeling` (1–5).
+# MAGIC End-to-end pipeline that reads raw CSVs, cleans data exactly as training did, engineers the 21 final features, and predicts morning `subjective_feeling` (1–5).
 # MAGIC
 # MAGIC **Supports both single-instance and batch prediction.** Validated against the training test set to confirm identical results.
 
@@ -45,11 +45,11 @@ print("Imports ready.")
 # CELL 2: Load the trained model and reference data
 # ══════════════════════════════════════════════════════════════════
 
-# ── Load the 13-feature XGBoost model ──
+# ── Load the 21-feature XGBoost model ──
 with open(os.path.join(MODEL_DIR, "xgboost_tuned_reduced.pkl"), "rb") as f:
     model = pickle.load(f)
 
-# ── Load the feature list (the 13 features in order) ──
+# ── Load the feature list (the 21 features in order) ──
 with open(os.path.join(MODEL_DIR, "feature_list.json"), "r") as f:
     FEATURE_NAMES = json.load(f)
 
@@ -310,138 +310,127 @@ print("Merge function defined: build_base_table")
 
 # COMMAND ----------
 
-# DBTITLE 1,Cell 5: Feature engineering — the 13 features explained
+# DBTITLE 1,Cell 5: Feature engineering — the 21 features (Tier 1+2 enriched)
 # ══════════════════════════════════════════════════════════════════
-# CELL 5: Feature Engineering — Build the 13 Model Features
+# CELL 5: Feature Engineering — Build the 21 Model Features
 #
-# Each feature is documented with:
-#   - WHAT it is (plain English)
-#   - HOW it is computed (exact logic)
-#   - WHY the model uses it (interpretation)
-#   - LEAKAGE SAFETY: how future-leaking is prevented
+# Computes all 21 features required by the Tier 1+2 enriched model.
+# All features are leakage-safe (use shift(1) for target-derived features).
 # ══════════════════════════════════════════════════════════════════
 
 def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Compute the 13 features required by the model.
+    Compute the 21 features required by the Tier 1+2 enriched model.
     Input: base table sorted by [user_id, checkin_date]
-    Output: same table with the 13 feature columns added.
-    
-    THE 13 FEATURES:
+    Output: same table with all 21 feature columns added.
+
+    THE 21 FEATURES:
     -----------------------------------------------------------------------
-    GROUP 1 — ALCOHOL (from daily_context, previous day's activity log)
-      1. alcohol_units    : How many alcohol units the user logged yesterday.
-                            More alcohol → worse morning feeling.
-      2. had_alcohol      : Binary 0/1 — did the user drink at all?
-                            Captures the "any vs none" cliff effect.
-      3. alcohol_level    : Ordinal 0/1/2 (none/light/heavy).
-                            Gives the model discrete thresholds to split on.
-    
-    GROUP 2 — TEMPORAL
-      4. week_of_year     : Calendar week (1–52) from the night before checkin.
-                            Captures seasonal rhythms (daylight, weather).
-    
-    GROUP 3 — OVERNIGHT PHYSIOLOGY (ring sensor, measured while sleeping)
-      5. total_sleep_minutes_zscore : This night's sleep duration compared to
-                            the user's own average. z = (value - mean) / std.
-                            Positive = slept more than usual. Negative = less.
-      6. avg_hr_bpm_zscore : User-normalised resting heart rate.
-                            Lower HR during sleep = better recovery.
-      7. avg_hrv_rmssd_ms_zscore : User-normalised heart rate variability.
-                            Higher HRV = better parasympathetic recovery.
-      8. deep_rem_total   : deep_minutes + rem_minutes. Total "restorative"
-                            sleep. Deep = physical recovery, REM = cognitive.
-      9. sleep_debt       : total_sleep_minutes minus user's mean.
-                            Negative = slept less than usual (deficit).
-    
-    GROUP 4 — AUTOREGRESSIVE (uses PAST check-in history, never current day)
-      10. subjective_feeling_lag1 : Yesterday's self-reported feeling (1–5).
-                            How you felt yesterday predicts today. shift(1).
-      11. checkin_seq_num  : Sequential check-in number (1st, 2nd, 3rd...).
-                            Captures habituation / engagement effects.
-    
-    GROUP 5 — RECENCY (days since a notable past event)
-      12. days_since_bad_sleep  : Days since feeling ≤2 was last reported.
-                            A recent bad night lingers. Uses strict < guard.
-      13. days_since_great_sleep : Days since feeling ≥4 was last reported.
-                            Recent great sleep creates momentum. Dominant feature.
+    GROUP 1 — ALCOHOL
+      1. had_alcohol       : Binary 0/1.
+      2. alcohol_level      : Ordinal 0/1/2 (none/light/heavy).
+      3. alcohol_units      : How many units.
+      4. alcohol_x_hrv_z    : alcohol_units * avg_hrv_rmssd_ms_zscore (interaction).
+
+    GROUP 2 — OVERNIGHT PHYSIOLOGY
+      5. deep_rem_total              : deep + REM minutes.
+      6. total_sleep_minutes_zscore  : User z-score.
+      7. rem_minutes_zscore          : User z-score.
+      8. avg_hr_bpm_zscore           : User z-score.
+      9. deep_minutes_zscore         : User z-score.
+     10. avg_hrv_rmssd_ms_zscore     : User z-score.
+     11. restorative_pct             : deep_rem_total / total_sleep_minutes.
+     12. sleep_debt                  : deviation from user mean.
+
+    GROUP 3 — TIER 1+2 PHYSIOLOGICAL (deviation from personal baselines)
+     13. stress_index_z   : hr_z_7d - hrv_z_7d (elevated HR + suppressed HRV).
+     14. recovery_score   : hrv_z_7d - hr_z_7d (opposite of stress).
+     15. sleep_user_ratio : tonight's sleep / user expanding mean sleep.
+     16. hr_user_ratio    : tonight's HR / user expanding mean HR.
+     17. hrv_user_ratio   : tonight's HRV / user expanding mean HRV.
+     18. deep_user_ratio  : tonight's deep / user expanding mean deep.
+
+    GROUP 4 — AUTOREGRESSIVE (uses PAST check-in history only)
+     19. feeling_roll5_mean  : Rolling mean of past 5 feelings.
+     20. feeling_ewm_7       : Exp weighted mean, span=7.
+     21. user_expanding_mean : User's expanding past mean of feeling.
     -----------------------------------------------------------------------
     """
     df = df.copy()
     df = df.sort_values(["user_id", "checkin_date"]).reset_index(drop=True)
-    checkin_dates = pd.to_datetime(df["checkin_date"])
-    
-    # ---- GROUP 1: ALCOHOL (already in base table from daily_context) ----
-    # alcohol_units, had_alcohol, alcohol_level: carried through from merge.
-    # Ensure had_alcohol is float (matches training)
+
+    # ---- GROUP 1: ALCOHOL ----
     if "had_alcohol" not in df.columns:
         df["had_alcohol"] = (df["alcohol_units"] > 0).astype(float)
     if "alcohol_level" not in df.columns:
         au = df["alcohol_units"].fillna(0)
         df["alcohol_level"] = np.where(au <= 0, 0, np.where(au <= 2, 1, 2)).astype(float)
-    
-    # ---- GROUP 2: TEMPORAL ----
-    # week_of_year from the night BEFORE checkin (night_date = checkin_date - 1)
-    night_date = checkin_dates - pd.Timedelta(days=1)
-    df["week_of_year"] = night_date.dt.isocalendar().week.astype(int)
-    
-    # ---- GROUP 3: OVERNIGHT PHYSIOLOGY ----
+
+    # ---- GROUP 2: OVERNIGHT PHYSIOLOGY ----
     # User z-scores: (value - user_mean) / max(user_std, 0.01)
-    # These capture "how unusual was THIS night for THIS user"
-    for col in ["total_sleep_minutes", "avg_hr_bpm", "avg_hrv_rmssd_ms"]:
+    for col in ["total_sleep_minutes", "deep_minutes", "rem_minutes",
+                "avg_hr_bpm", "avg_hrv_rmssd_ms"]:
         df[f"{col}_zscore"] = df.groupby("user_id")[col].transform(
             lambda x: (x - x.mean()) / max(x.std(), 0.01)
         )
-    
-    # deep_rem_total: sum of deep + REM sleep (restorative stages)
+
     df["deep_rem_total"] = df["deep_minutes"].fillna(0) + df["rem_minutes"].fillna(0)
-    
-    # sleep_debt: how much more/less than the user's average
+    df["restorative_pct"] = (
+        df["deep_rem_total"] / df["total_sleep_minutes"].replace(0, np.nan)
+    ).round(3)
     df["sleep_debt"] = df["total_sleep_minutes"] - df.groupby("user_id")["total_sleep_minutes"].transform("mean")
-    
+
+    # alcohol x HRV interaction
+    df["alcohol_x_hrv_z"] = df["alcohol_units"].fillna(0) * df["avg_hrv_rmssd_ms_zscore"].fillna(0)
+
+    # ---- GROUP 3: TIER 1+2 PHYSIOLOGICAL ----
+    # 7-day rolling mean and std for HR and HRV (shift(1) = past-only)
+    for raw_col in ["avg_hr_bpm", "avg_hrv_rmssd_ms"]:
+        mean_col = f"{raw_col}_roll7_mean"
+        std_col = f"{raw_col}_roll7_std"
+        df[mean_col] = df.groupby("user_id")[raw_col].transform(
+            lambda x: x.shift(1).rolling(7, min_periods=1).mean()
+        )
+        df[std_col] = df.groupby("user_id")[raw_col].transform(
+            lambda x: x.shift(1).rolling(7, min_periods=2).std()
+        )
+
+    # Z-score deviations from 7-day baseline
+    hr_std_safe = df["avg_hr_bpm_roll7_std"].replace(0, np.nan)
+    hrv_std_safe = df["avg_hrv_rmssd_ms_roll7_std"].replace(0, np.nan)
+    hr_z_7d = ((df["avg_hr_bpm"] - df["avg_hr_bpm_roll7_mean"]) / hr_std_safe).clip(-5, 5)
+    hrv_z_7d = ((df["avg_hrv_rmssd_ms"] - df["avg_hrv_rmssd_ms_roll7_mean"]) / hrv_std_safe).clip(-5, 5)
+
+    df["stress_index_z"] = hr_z_7d - hrv_z_7d  # high = stressed
+    df["recovery_score"] = hrv_z_7d - hr_z_7d  # high = recovered
+
+    # User-normalised ratios: tonight / user expanding past mean
+    for new_col, src_col in [("sleep_user_ratio", "total_sleep_minutes"),
+                              ("hr_user_ratio", "avg_hr_bpm"),
+                              ("hrv_user_ratio", "avg_hrv_rmssd_ms"),
+                              ("deep_user_ratio", "deep_minutes")]:
+        user_exp_mean = df.groupby("user_id")[src_col].transform(
+            lambda x: x.shift(1).expanding().mean()
+        )
+        df[new_col] = (df[src_col] / user_exp_mean.replace(0, np.nan)).round(4)
+
     # ---- GROUP 4: AUTOREGRESSIVE ----
-    # subjective_feeling_lag1: yesterday's feeling, using shift(1) per user
-    # LEAKAGE SAFETY: shift(1) guarantees we only see the PREVIOUS row
-    df["subjective_feeling_lag1"] = df.groupby("user_id")["subjective_feeling"].shift(1)
-    
-    # checkin_seq_num: 1-indexed sequential counter per user
-    df["checkin_seq_num"] = df.groupby("user_id").cumcount() + 1
-    
-    # ---- GROUP 5: RECENCY ----
-    # days_since_bad_sleep and days_since_great_sleep
-    # LEAKAGE SAFETY: Only counts events STRICTLY BEFORE the current row's date.
-    # The loop records the last event date, then checks last_event < current_date.
-    
-    def _days_since_event(group, col, threshold, direction):
-        """For each row, days since condition was last true (strict past only)."""
-        result = pd.Series(np.nan, index=group.index)
-        last_event = pd.NaT
-        for i, (idx, row) in enumerate(group.iterrows()):
-            val = row[col]
-            if pd.notna(val):
-                if (direction == "above" and val >= threshold) or \
-                   (direction == "below" and val <= threshold):
-                    last_event = row["checkin_date"]
-            if pd.notna(last_event) and last_event < row["checkin_date"]:
-                result.iloc[i] = (row["checkin_date"] - last_event).days
-        return result
-    
-    df["checkin_date"] = pd.to_datetime(df["checkin_date"]).dt.date
-    df["checkin_date"] = pd.to_datetime(df["checkin_date"])
-    
-    df["days_since_bad_sleep"] = df.groupby("user_id", group_keys=False).apply(
-        lambda g: _days_since_event(g, "subjective_feeling", 2, "below")
-    ).values
-    
-    df["days_since_great_sleep"] = df.groupby("user_id", group_keys=False).apply(
-        lambda g: _days_since_event(g, "subjective_feeling", 4, "above")
-    ).values
-    
+    TARGET = "subjective_feeling"
+    df["feeling_roll5_mean"] = df.groupby("user_id")[TARGET].transform(
+        lambda x: x.shift(1).rolling(5, min_periods=1).mean()
+    )
+    df["feeling_ewm_7"] = df.groupby("user_id")[TARGET].transform(
+        lambda x: x.shift(1).ewm(span=7, min_periods=1).mean()
+    )
+    df["user_expanding_mean"] = df.groupby("user_id")[TARGET].transform(
+        lambda x: x.shift(1).expanding().mean()
+    )
+
     return df
 
 
 print("Feature engineering function defined: engineer_features")
-print(f"Produces these 13 features: {FEATURE_NAMES}")
+print(f"Produces these {len(FEATURE_NAMES)} features: {FEATURE_NAMES}")
 
 # COMMAND ----------
 
@@ -449,14 +438,14 @@ print(f"Produces these 13 features: {FEATURE_NAMES}")
 # ══════════════════════════════════════════════════════════════════
 # CELL 6: Prediction Functions
 #
-# predict_batch(): Takes a DataFrame with the 13 features, returns predictions.
-# predict_single(): Takes a dict of 13 feature values, returns one prediction.
+# predict_batch(): Takes a DataFrame with the 21 features, returns predictions.
+# predict_single(): Takes a dict of 21 feature values, returns one prediction.
 # predict_from_raw(): Full pipeline from raw CSVs to predictions.
 # ══════════════════════════════════════════════════════════════════
 
 def predict_batch(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Given a DataFrame containing the 13 feature columns,
+    Given a DataFrame containing the 21 feature columns,
     add prediction columns and return.
     
     Output columns added:
@@ -476,7 +465,7 @@ def predict_single(features: dict) -> dict:
     Predict for a single instance.
     
     Args:
-        features: dict with keys matching the 13 feature names.
+        features: dict with keys matching the 21 feature names.
                   Missing keys become NaN (XGBoost handles natively).
     
     Returns:
@@ -484,13 +473,16 @@ def predict_single(features: dict) -> dict:
     
     Example:
         predict_single({
-            'alcohol_units': 2.0, 'had_alcohol': 1.0, 'alcohol_level': 1.0,
-            'week_of_year': 15,
-            'total_sleep_minutes_zscore': -0.5, 'avg_hr_bpm_zscore': 0.3,
-            'avg_hrv_rmssd_ms_zscore': -0.2, 'deep_rem_total': 120.0,
-            'sleep_debt': -30.0,
-            'subjective_feeling_lag1': 3.0, 'checkin_seq_num': 25,
-            'days_since_bad_sleep': 5.0, 'days_since_great_sleep': 2.0
+            'had_alcohol': 1.0, 'alcohol_level': 1.0, 'alcohol_units': 2.0,
+            'alcohol_x_hrv_z': -0.4, 'deep_rem_total': 120.0,
+            'total_sleep_minutes_zscore': -0.5, 'rem_minutes_zscore': 0.1,
+            'avg_hr_bpm_zscore': 0.3, 'deep_minutes_zscore': -0.3,
+            'avg_hrv_rmssd_ms_zscore': -0.2, 'restorative_pct': 0.38,
+            'sleep_debt': -30.0, 'stress_index_z': 0.5,
+            'recovery_score': -0.5, 'sleep_user_ratio': 0.95,
+            'hr_user_ratio': 1.02, 'hrv_user_ratio': 0.95,
+            'deep_user_ratio': 0.90, 'feeling_roll5_mean': 3.2,
+            'feeling_ewm_7': 3.1, 'user_expanding_mean': 3.3
         })
     """
     row = {feat: features.get(feat, np.nan) for feat in FEATURE_NAMES}
@@ -508,7 +500,7 @@ def predict_from_raw() -> pd.DataFrame:
       1. Load raw CSVs
       2. Clean all tables
       3. Merge into base table
-      4. Engineer the 13 features
+      4. Engineer the 21 features
       5. Predict for all rows
     Returns the full DataFrame with predictions.
     """
@@ -528,7 +520,7 @@ def predict_from_raw() -> pd.DataFrame:
     print("Step 3/5: Merging into base table...")
     base = build_base_table(checkins, sessions, context, profiles)
     
-    print("Step 4/5: Engineering 13 features...")
+    print("Step 4/5: Engineering 21 features...")
     featured = engineer_features(base)
     
     print("Step 5/5: Predicting...")
@@ -545,7 +537,7 @@ print("Prediction functions defined: predict_batch, predict_single, predict_from
 
 # COMMAND ----------
 
-# DBTITLE 1,Cell 7: Run full pipeline and validate against test set
+# DBTITLE 1,Cell 7: Run full pipeline and validate against test set (21 features)
 # ══════════════════════════════════════════════════════════════════
 # CELL 7: Run Full Pipeline + Validate Against Test Set
 #
@@ -609,7 +601,7 @@ display(results_df)
 print(f"\n{'='*70}")
 print(f"VALIDATION: Compare to Model Training notebook results")
 print(f"{'='*70}")
-expected = {"RMSE": 0.2769, "R²": 0.9253, "Exact Acc": "90.8%"}
+expected = {"RMSE": 0.5560, "R²": 0.6989, "Exact Acc": "65.2%"}
 test_row = results_df[results_df["Split"] == "Test"].iloc[0]
 print(f"\n  Expected  Test R²:        {expected['R²']}")
 print(f"  Pipeline  Test R²:        {test_row['R²']}")
@@ -630,7 +622,7 @@ else:
 
 # COMMAND ----------
 
-# DBTITLE 1,Cell 8: Demo — single instance prediction
+# DBTITLE 1,Cell 8: Demo — single instance prediction (21 features)
 # ══════════════════════════════════════════════════════════════════
 # CELL 8: Demo — Single Instance Prediction
 #
@@ -638,27 +630,34 @@ else:
 # ══════════════════════════════════════════════════════════════════
 
 # Example: a user who drank moderately, slept slightly less than usual,
-# had a bad night 10 days ago, and a great night 1 day ago.
+# with moderate restorative sleep and 45 days into the study.
 
 example = {
     # Alcohol (from yesterday's daily_context)
     "alcohol_units": 2.0,            # 2 units consumed
     "had_alcohol": 1.0,              # yes, they drank
     "alcohol_level": 1.0,            # light (0=none, 1=light, 2=heavy)
-    # Temporal
-    "week_of_year": 15,              # mid-April
+    "alcohol_x_hrv_z": -0.4,         # alcohol * HRV z-score interaction
     # Overnight physiology (from ring sensor)
-    "total_sleep_minutes_zscore": -0.5,  # slept a bit less than their average
-    "avg_hr_bpm_zscore": 0.3,            # HR slightly elevated (worse)
-    "avg_hrv_rmssd_ms_zscore": -0.2,     # HRV slightly below personal norm
     "deep_rem_total": 120.0,             # 2 hours of restorative sleep
+    "total_sleep_minutes_zscore": -0.5,  # slept a bit less than their average
+    "rem_minutes_zscore": 0.1,           # REM roughly average
+    "avg_hr_bpm_zscore": 0.3,            # HR slightly elevated (worse)
+    "deep_minutes_zscore": -0.3,         # less deep sleep than usual
+    "avg_hrv_rmssd_ms_zscore": -0.2,     # HRV slightly below personal norm
+    "restorative_pct": 0.38,             # 38% of sleep was restorative
     "sleep_debt": -30.0,                 # 30 min less than their average
+    # Tier 1+2 physiological baselines
+    "stress_index_z": 0.5,               # HR z above normal + HRV z below = stressed
+    "recovery_score": -0.5,              # opposite of stress (poor recovery)
+    "sleep_user_ratio": 0.95,            # 95% of personal sleep norm
+    "hr_user_ratio": 1.02,               # HR 2% above personal norm
+    "hrv_user_ratio": 0.95,              # HRV 5% below personal norm
+    "deep_user_ratio": 0.90,             # deep sleep 10% below norm
     # Autoregressive
-    "subjective_feeling_lag1": 3.0,      # felt neutral yesterday
-    "checkin_seq_num": 25,               # 25th check-in for this user
-    # Recency
-    "days_since_bad_sleep": 10.0,        # last bad night was 10 days ago
-    "days_since_great_sleep": 1.0,       # felt great just yesterday
+    "feeling_roll5_mean": 3.2,           # avg of past 5 feelings
+    "feeling_ewm_7": 3.1,               # exp weighted mean, span=7
+    "user_expanding_mean": 3.3,          # user's overall past avg feeling
 }
 
 result = predict_single(example)
@@ -675,14 +674,15 @@ else:
     print(f"  → The user is predicted to feel BELOW AVERAGE this morning.")
 
 print(f"\nKey drivers for this prediction:")
-print(f"  + days_since_great_sleep=1 (felt great recently → positive momentum)")
-print(f"  - alcohol_units=2 (moderate drinking → reduces score)")
-print(f"  - sleep_debt=-30 (slept less than usual → reduces score)")
-print(f"  + days_since_bad_sleep=10 (no recent bad nights → positive)")
+print(f"  - alcohol_units=2 (moderate drinking -> reduces score)")
+print(f"  - stress_index_z=0.5 (elevated HR + suppressed HRV = stressed)")
+print(f"  - sleep_debt=-30 (slept less than usual -> reduces score)")
+print(f"  - deep_user_ratio=0.90 (10% less deep sleep than personal norm)")
+print(f"  + feeling_ewm_7=3.1 (recent trend was neutral-ok)")
 
 # COMMAND ----------
 
-# DBTITLE 1,Cell 9: Inference latency and performance metrics
+# DBTITLE 1,Cell 9: Inference latency and performance metrics (21 features)
 # ══════════════════════════════════════════════════════════════════
 # CELL 9: Inference Latency & Performance Metrics
 #
@@ -767,7 +767,7 @@ stages = [
     ("CSV loading (4 files)",        t_load - t_start),
     ("Data cleaning (4 tables)",     t_clean - t_load),
     ("Table merging (LEFT JOINs)",   t_merge - t_clean),
-    ("Feature engineering (13 feat)", t_feat - t_merge),
+    ("Feature engineering (21 feat)", t_feat - t_merge),
     ("Model prediction (4,989 rows)", t_pred - t_feat),
 ]
 total = t_pred - t_start
@@ -792,7 +792,7 @@ for label, path in [("Model pickle", model_path), ("Feature list", flist_path), 
 print(f"\n{'='*70}")
 print(f"SUMMARY")
 print(f"{'='*70}")
-print(f"  Model:               XGBoost, 13 features, 1.11 MB")
+print(f"  Model:               XGBoost, 21 features, {os.path.getsize(os.path.join(MODEL_DIR, 'xgboost_tuned_reduced.pkl'))/1024/1024:.2f} MB")
 print(f"  Single prediction:   {single_us:.0f} µs  ({1e6/single_us:,.0f}/sec)")
 print(f"  Batch ({len(X_test_batch)} rows):   {(t_pred-t_feat)*1000:.1f} ms  ({len(X_test_batch)/(t_pred-t_feat):,.0f}/sec)")
 print(f"  Full pipeline:       {total:.1f} s  (dominated by feature engineering)")
