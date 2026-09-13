@@ -137,7 +137,7 @@ class RawContextInput(BaseModel):
     subjective_feeling_lag1: Optional[float] = 3.0
     days_since_bad_sleep: Optional[float] = None
     days_since_great_sleep: Optional[float] = None
-    checkin_seq_num: Optional[int] = 1
+    checkin_seq_num: Optional[int] = Field(default=None, ge=1, description="Cumulative check-in count (pass 1 or omit baselines to simulate cold start)")
 
 
 # ---------------------------------------------------------------------------
@@ -462,7 +462,7 @@ def calculate_features(raw: RawContextInput):
             "subjective_feeling_lag1": raw.subjective_feeling_lag1,
             "days_since_bad_sleep": raw.days_since_bad_sleep,
             "days_since_great_sleep": raw.days_since_great_sleep,
-            "checkin_seq_num": raw.checkin_seq_num,
+            "checkin_seq_num": raw.checkin_seq_num if raw.checkin_seq_num is not None else (15 if (raw.user_mean_sleep is not None or raw.recent_feeling_mean is not None) else 1),
             "week_of_year": week_of_year,
         }
 

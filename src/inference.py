@@ -271,18 +271,27 @@ class ReadinessPredictor:
         rounded_pred = int(np.clip(np.round(clamped_raw), 1, 5))
 
         # Cold start detection:
-        # A user is in cold start if Day-1 onboarding checkin or missing autoregressive baselines
-        seq_num = features_clean.get("checkin_seq_num")
-        is_day_1 = seq_num is not None and not pd.isna(seq_num) and float(seq_num) <= 1.0
-
-        is_cold_start = bool(
-            is_day_1 or (
-                pd.isna(features_clean.get("feeling_roll5_mean")) and
-                pd.isna(features_clean.get("total_sleep_minutes_zscore")) and
-                pd.isna(features_clean.get("user_expanding_mean")) and
-                pd.isna(features_clean.get("subjective_feeling_lag1"))
-            )
+        # A user is in cold start if:
+        # 1. Baseline features are completely missing / NaN (no z-scores and no historical feeling anchors)
+        # 2. OR explicitly flagged as Day 1 onboarding (checkin_seq_num <= 1 AND without established multi-day feeling history).
+        has_baseline_zscores = any(
+            features_clean.get(f) is not None and not pd.isna(features_clean.get(f))
+            for f in ["total_sleep_minutes_zscore", "avg_hr_bpm_zscore", "avg_hrv_rmssd_ms_zscore", "sleep_debt"]
         )
+        has_history_feeling = any(
+            features_clean.get(f) is not None and not pd.isna(features_clean.get(f))
+            for f in ["feeling_roll5_mean", "user_expanding_mean", "feeling_ewm_7", "subjective_feeling_lag1"]
+        )
+
+        seq_num = features_clean.get("checkin_seq_num")
+        is_explicit_day_1 = seq_num is not None and not pd.isna(seq_num) and float(seq_num) <= 1.0
+
+        if is_explicit_day_1:
+            is_cold_start = True
+        elif not has_baseline_zscores and not has_history_feeling:
+            is_cold_start = True
+        else:
+            is_cold_start = False
 
         has_alc = features_clean.get("had_alcohol")
         has_alc_val = 0.0 if pd.isna(has_alc) else float(has_alc)

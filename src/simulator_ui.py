@@ -128,7 +128,7 @@ SIMULATOR_HTML = """<!DOCTYPE html>
 
       <!-- LEFT: Mobile App Mirror Viewport (col-span-5) -->
       <div class="lg:col-span-5 flex flex-col">
-        <div class="bg-brand-card rounded-3xl border border-brand-cardBorder p-5 sm:p-6 shadow-2xl relative overflow-hidden flex-1 flex flex-col justify-between space-y-4">
+        <div class="bg-brand-card rounded-3xl border border-brand-cardBorder p-5 sm:p-6 shadow-2xl relative overflow-hidden flex-1 flex flex-col justify-start space-y-3.5">
           
           <!-- Ambient Glow Backdrop behind Dial -->
           <div id="ambientGlow" class="ambient-glow absolute -top-16 -left-16 w-72 h-72 rounded-full bg-brand-emerald/15 blur-3xl pointer-events-none transition-colors duration-500"></div>
@@ -140,7 +140,13 @@ SIMULATOR_HTML = """<!DOCTYPE html>
                 <span class="h-2 w-2 rounded-full bg-brand-emerald animate-pulse"></span>
                 <span class="font-semibold text-gray-300 tracking-wide">RING CONNECTED</span>
               </span>
-              <span class="font-mono text-[11px] text-gray-400">SYNCED 07:15 AM</span>
+              <div class="flex items-center space-x-2">
+                <span id="coldStartBadge" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-brand-emerald/10 text-brand-emerald border border-brand-emerald/20 flex items-center space-x-1">
+                  <span class="inline-block w-1.5 h-1.5 rounded-full bg-brand-emerald"></span>
+                  <span id="coldStartBadgeText">Baseline Active</span>
+                </span>
+                <span class="font-mono text-[11px] text-gray-400">SYNCED 07:15 AM</span>
+              </div>
             </div>
 
             <!-- Header Ring Metrics Strip -->
@@ -303,7 +309,7 @@ SIMULATOR_HTML = """<!DOCTYPE html>
 
       <!-- RIGHT: Tab-Driven Interactive Control Deck (col-span-7) -->
       <div class="lg:col-span-7 flex flex-col">
-        <div class="bg-brand-card rounded-3xl border border-brand-cardBorder p-6 shadow-xl flex-1 flex flex-col justify-between space-y-4">
+        <div class="bg-brand-card rounded-3xl border border-brand-cardBorder p-6 shadow-xl flex-1 flex flex-col justify-start space-y-3.5">
           
           <!-- Tab Navigation Header -->
           <div class="border-b border-brand-cardBorder pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -321,14 +327,17 @@ SIMULATOR_HTML = """<!DOCTYPE html>
               </div>
             </div>
 
-            <!-- Sync Indicator & Quick Reset -->
-            <div class="flex items-center space-x-3 text-xs">
-              <span class="text-brand-slateText hidden md:inline flex items-center space-x-1">
-                <span class="inline-block w-1.5 h-1.5 rounded-full bg-brand-emerald"></span>
-                <span>Auto-Synced</span>
+            <!-- Sync Indicator, Cold Start Toggle & Quick Reset -->
+            <div class="flex items-center space-x-2 text-xs">
+              <span id="uiColdStartStatus" class="flex items-center space-x-1 px-2 py-0.5 rounded-lg bg-brand-emerald/10 text-brand-emerald border border-brand-emerald/20 font-mono text-[11px]">
+                <span id="uiColdStartDot" class="inline-block w-1.5 h-1.5 rounded-full bg-brand-emerald"></span>
+                <span id="uiColdStartText">Baseline Active</span>
               </span>
-              <button onclick="applyPreset('baseline')" class="text-brand-emerald hover:underline font-semibold flex items-center space-x-1">
-                <span>↺</span> <span>Reset Baseline</span>
+              <button onclick="applyPreset('cold_start')" id="btnColdStart" class="px-2.5 py-1 rounded-lg border border-brand-amber/30 bg-brand-amber/10 hover:bg-brand-amber/20 text-brand-amber font-semibold flex items-center space-x-1 transition text-xs" title="Simulate Day-1 Onboarding without personal baselines">
+                <span>❄️</span> <span>Day 1 Test</span>
+              </button>
+              <button onclick="applyPreset('baseline')" class="px-2.5 py-1 rounded-lg border border-brand-emerald/30 bg-brand-emerald/10 hover:bg-brand-emerald/20 text-brand-emerald font-semibold flex items-center space-x-1 transition text-xs">
+                <span>↺</span> <span>Reset</span>
               </button>
             </div>
           </div>
@@ -341,7 +350,7 @@ SIMULATOR_HTML = """<!DOCTYPE html>
             <!-- ========================================================= -->
             <!-- TAB 1: RAW INPUTS CONTROLS                                -->
             <!-- ========================================================= -->
-            <div id="viewRaw" class="hidden space-y-3.5 flex-1 flex flex-col justify-between overflow-y-auto pr-1">
+            <div id="viewRaw" class="hidden space-y-3 flex-1 flex flex-col justify-start overflow-y-auto pr-1">
               <div class="bg-[#151B27] p-2.5 rounded-xl border border-white/5 text-xs text-brand-slateText flex items-center justify-between">
                 <span>Adjust raw sensor readings &amp; lifestyle habits; all 21 features update live.</span>
                 <span class="mono text-[11px] text-brand-emerald font-semibold">Formula: z = (x - &mu;) / &sigma;</span>
@@ -478,7 +487,7 @@ SIMULATOR_HTML = """<!DOCTYPE html>
             <!-- ========================================================= -->
             <!-- TAB 2: ENGINEERED FEATURES (Organized in 3 Sub-Tabs)      -->
             <!-- ========================================================= -->
-            <div id="viewFeatures" class="space-y-3 flex-1 flex flex-col justify-between overflow-y-auto pr-1">
+            <div id="viewFeatures" class="space-y-3 flex-1 flex flex-col justify-start overflow-y-auto pr-1">
               
               <!-- Sub-Tab Category Pill Selector -->
               <div class="flex items-center space-x-1.5 bg-[#0D111A] p-1 rounded-xl border border-white/10">
@@ -753,20 +762,28 @@ SIMULATOR_HTML = """<!DOCTYPE html>
             <!-- ========================================================= -->
             <!-- TAB 3: SHAP VALUES & WATERFALL EXPLAINABILITY             -->
             <!-- ========================================================= -->
-            <div id="viewShap" class="hidden space-y-3.5 flex-1 flex flex-col justify-between overflow-y-auto pr-1">
-              <div class="flex items-center justify-between bg-[#151A27] p-3 rounded-xl border border-white/5">
+            <div id="viewShap" class="hidden space-y-2.5 flex-1 flex flex-col justify-start pr-1">
+              <div class="flex items-center justify-between bg-[#151A27] p-2.5 sm:p-3 rounded-xl border border-white/5 gap-2">
                 <div>
                   <div class="text-[10px] uppercase text-brand-slateText font-semibold">POPULATION PRIOR BIAS</div>
-                  <div class="text-sm font-bold mono text-gray-200" id="baseValueText">3.2805</div>
+                  <div class="text-xs sm:text-sm font-bold mono text-gray-200" id="baseValueText">3.2805</div>
+                </div>
+                <div class="flex items-center space-x-1 bg-[#0D111A] p-0.5 rounded-lg border border-white/5">
+                  <button id="shapFilterTop" onclick="setShapFilter('top')" class="px-2 py-1 text-[10px] font-semibold rounded bg-brand-card text-white border border-white/10 transition">
+                    Top 10 Drivers
+                  </button>
+                  <button id="shapFilterAll" onclick="setShapFilter('all')" class="px-2 py-1 text-[10px] font-semibold rounded text-gray-400 hover:text-white transition">
+                    All 21 Features
+                  </button>
                 </div>
                 <div class="text-right">
                   <div class="text-[10px] uppercase text-brand-slateText font-semibold">NET SHAP SUM IMPACT</div>
-                  <div class="text-sm font-bold mono text-brand-emerald" id="shapTotalSum">+0.906</div>
+                  <div class="text-xs sm:text-sm font-bold mono text-brand-emerald" id="shapTotalSum">+0.906</div>
                 </div>
               </div>
 
-              <!-- Dynamic 21-Feature TreeSHAP Waterfall List -->
-              <div id="shapBarsContainer" class="space-y-2 flex-1 overflow-y-auto pr-1">
+              <!-- Dynamic 21-Feature TreeSHAP Waterfall List in 2-Column Responsive Grid -->
+              <div id="shapBarsContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-2 overflow-y-auto max-h-[460px] pr-1">
                 <!-- Rendered dynamically via JavaScript -->
               </div>
 
@@ -775,7 +792,7 @@ SIMULATOR_HTML = """<!DOCTYPE html>
                   <span class="inline-block w-2.5 h-2.5 rounded-full bg-brand-emerald"></span>
                   <span>Pushes Score UP</span>
                 </span>
-                <span class="mono text-gray-400">Score = Base + &Sigma;(SHAP)</span>
+                <span class="mono text-gray-400 hidden sm:inline">Score = Base + &Sigma;(SHAP)</span>
                 <span class="flex items-center space-x-1.5">
                   <span class="inline-block w-2.5 h-2.5 rounded-full bg-brand-coral"></span>
                   <span>Pushes Score DOWN</span>
@@ -906,6 +923,9 @@ SIMULATOR_HTML = """<!DOCTYPE html>
       baseline: {
         raw_sleep: 440, deep: 65, rem: 70, hr: 60, hrv: 48, alcohol: 0.0, feeling: 3.3
       },
+      cold_start: {
+        raw_sleep: 420, deep: 60, rem: 65, hr: 62, hrv: 45, alcohol: 0.0, feeling: 3.0
+      },
       alcohol: {
         raw_sleep: 380, deep: 35, rem: 45, hr: 69, hrv: 28, alcohol: 3.5, feeling: 3.0
       },
@@ -913,6 +933,10 @@ SIMULATOR_HTML = """<!DOCTYPE html>
         raw_sleep: 300, deep: 25, rem: 30, hr: 67, hrv: 25, alcohol: 0.0, feeling: 2.0
       }
     };
+
+    let isColdStartMode = false;
+    let shapFilterMode = 'top';
+    let latestShapData = null;
 
     // User calibration baseline constants
     const USER_BASE = {
@@ -974,7 +998,29 @@ SIMULATOR_HTML = """<!DOCTYPE html>
       }
     }
 
+    function setShapFilter(mode) {
+      shapFilterMode = mode;
+      const btnTop = document.getElementById('shapFilterTop');
+      const btnAll = document.getElementById('shapFilterAll');
+      if (mode === 'top') {
+        btnTop.className = 'px-2 py-1 text-[10px] font-semibold rounded bg-brand-card text-white border border-white/10 transition';
+        btnAll.className = 'px-2 py-1 text-[10px] font-semibold rounded text-gray-400 hover:text-white transition';
+      } else {
+        btnAll.className = 'px-2 py-1 text-[10px] font-semibold rounded bg-brand-card text-white border border-white/10 transition';
+        btnTop.className = 'px-2 py-1 text-[10px] font-semibold rounded text-gray-400 hover:text-white transition';
+      }
+      if (latestShapData) {
+        renderShapBars(latestShapData.shap_breakdown, latestShapData.base_value);
+      }
+    }
+
     function applyPreset(key) {
+      if (key === 'cold_start') {
+        isColdStartMode = true;
+      } else {
+        isColdStartMode = false;
+      }
+
       const p = PRESETS[key];
       if (!p) return;
 
@@ -1051,6 +1097,7 @@ SIMULATOR_HTML = """<!DOCTYPE html>
 
     // When FEATURE sliders change -> sync estimated RAW values and update
     function onParamChange() {
+      isColdStartMode = false;
       const sleep_z = parseFloat(document.getElementById('param_sleep_z').value);
       const deep_rem = parseFloat(document.getElementById('param_deep_rem').value);
       const hr_z = parseFloat(document.getElementById('param_hr_z').value);
@@ -1255,24 +1302,25 @@ SIMULATOR_HTML = """<!DOCTYPE html>
         had_alcohol: alcohol > 0 ? 1.0 : 0.0,
         alcohol_level: parseFloat(document.getElementById('param_alcohol_level').value),
         deep_rem_total: parseFloat(document.getElementById('param_deep_rem').value),
-        total_sleep_minutes_zscore: parseFloat(document.getElementById('param_sleep_z').value),
+        total_sleep_minutes_zscore: isColdStartMode ? null : parseFloat(document.getElementById('param_sleep_z').value),
         stress_index_z: parseFloat(document.getElementById('param_stress_z').value),
         alcohol_units: alcohol,
         alcohol_x_hrv_z: parseFloat(document.getElementById('param_alcohol_x_hrv').value),
-        sleep_debt: parseFloat(document.getElementById('param_sleep_debt').value),
-        rem_minutes_zscore: parseFloat(document.getElementById('param_rem_z').value),
-        sleep_user_ratio: parseFloat(document.getElementById('param_sleep_ratio').value),
+        sleep_debt: isColdStartMode ? null : parseFloat(document.getElementById('param_sleep_debt').value),
+        rem_minutes_zscore: isColdStartMode ? null : parseFloat(document.getElementById('param_rem_z').value),
+        sleep_user_ratio: isColdStartMode ? null : parseFloat(document.getElementById('param_sleep_ratio').value),
         recovery_score: parseFloat(document.getElementById('param_recovery_sc').value),
-        avg_hr_bpm_zscore: parseFloat(document.getElementById('param_hr_z').value),
-        deep_minutes_zscore: parseFloat(document.getElementById('param_deep_z').value),
+        avg_hr_bpm_zscore: isColdStartMode ? null : parseFloat(document.getElementById('param_hr_z').value),
+        deep_minutes_zscore: isColdStartMode ? null : parseFloat(document.getElementById('param_deep_z').value),
         restorative_pct: parseFloat(document.getElementById('param_restorative_pct').value),
-        avg_hrv_rmssd_ms_zscore: hrv_z,
-        feeling_roll5_mean: parseFloat(document.getElementById('param_roll5').value),
-        feeling_ewm_7: parseFloat(document.getElementById('param_ewm7').value),
-        hrv_user_ratio: parseFloat(document.getElementById('param_hrv_ratio').value),
-        deep_user_ratio: parseFloat(document.getElementById('param_deep_ratio').value),
-        user_expanding_mean: parseFloat(document.getElementById('param_exp_mean').value),
-        hr_user_ratio: parseFloat(document.getElementById('param_hr_ratio').value),
+        avg_hrv_rmssd_ms_zscore: isColdStartMode ? null : hrv_z,
+        feeling_roll5_mean: isColdStartMode ? null : parseFloat(document.getElementById('param_roll5').value),
+        feeling_ewm_7: isColdStartMode ? null : parseFloat(document.getElementById('param_ewm7').value),
+        hrv_user_ratio: isColdStartMode ? null : parseFloat(document.getElementById('param_hrv_ratio').value),
+        deep_user_ratio: isColdStartMode ? null : parseFloat(document.getElementById('param_deep_ratio').value),
+        user_expanding_mean: isColdStartMode ? null : parseFloat(document.getElementById('param_exp_mean').value),
+        hr_user_ratio: isColdStartMode ? null : parseFloat(document.getElementById('param_hr_ratio').value),
+        checkin_seq_num: isColdStartMode ? 1 : 15,
       };
 
       try {
@@ -1293,8 +1341,38 @@ SIMULATOR_HTML = """<!DOCTYPE html>
     }
 
     function updateUI(data) {
+      latestShapData = data;
       const rawScore = data.pred_raw;
       renderDialFast(rawScore, rawScore);
+
+      // Update Cold Start indicator badges
+      const csBadge = document.getElementById('coldStartBadge');
+      const csBadgeText = document.getElementById('coldStartBadgeText');
+      const csDeck = document.getElementById('uiColdStartStatus');
+      const csDeckDot = document.getElementById('uiColdStartDot');
+      const csDeckText = document.getElementById('uiColdStartText');
+
+      if (data.is_cold_start) {
+        if (csBadge) {
+          csBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-brand-amber/15 text-brand-amber border border-brand-amber/30 flex items-center space-x-1 animate-pulse';
+          csBadgeText.innerText = 'Day-1 Cold Start';
+        }
+        if (csDeck) {
+          csDeck.className = 'flex items-center space-x-1 px-2 py-0.5 rounded-lg bg-brand-amber/15 text-brand-amber border border-brand-amber/30 font-mono text-[11px]';
+          csDeckDot.className = 'inline-block w-1.5 h-1.5 rounded-full bg-brand-amber';
+          csDeckText.innerText = 'Day-1 Cold Start';
+        }
+      } else {
+        if (csBadge) {
+          csBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-brand-emerald/10 text-brand-emerald border border-brand-emerald/20 flex items-center space-x-1';
+          csBadgeText.innerText = 'Baseline Active';
+        }
+        if (csDeck) {
+          csDeck.className = 'flex items-center space-x-1 px-2 py-0.5 rounded-lg bg-brand-emerald/10 text-brand-emerald border border-brand-emerald/20 font-mono text-[11px]';
+          csDeckDot.className = 'inline-block w-1.5 h-1.5 rounded-full bg-brand-emerald';
+          csDeckText.innerText = 'Baseline Active';
+        }
+      }
 
       // Recommendation: How did you recover? What to do today? + Model Delta
       if (data.recommendation) {
@@ -1340,30 +1418,28 @@ SIMULATOR_HTML = """<!DOCTYPE html>
       const container = document.getElementById('shapBarsContainer');
       container.innerHTML = '';
 
+      const displayList = shapFilterMode === 'top' ? breakdown.slice(0, 10) : breakdown;
       const maxAbs = Math.max(...breakdown.map(b => b.abs_impact), 0.25);
 
-      breakdown.forEach(item => {
+      displayList.forEach(item => {
         const isPos = item.direction === 'positive';
         const barPct = Math.min(100, Math.round((item.abs_impact / maxAbs) * 100));
 
         const row = document.createElement('div');
-        row.className = 'bg-[#151A27] rounded-xl p-2.5 border border-white/5 flex flex-col space-y-1 hover:border-white/20 transition';
+        row.className = 'bg-[#151A27] rounded-xl p-2 px-2.5 border border-white/5 flex flex-col justify-center space-y-1 hover:border-white/20 transition';
 
         row.innerHTML = `
           <div class="flex items-center justify-between text-xs">
-            <div class="flex items-center space-x-2 truncate">
-              <span class="font-semibold text-gray-200 truncate">${item.label}</span>
-              <span class="text-[10px] text-brand-slateText mono bg-black/40 px-1.5 py-0.5 rounded">val: ${item.value !== null ? item.value : 'NaN'}</span>
-            </div>
-            <div class="font-mono text-xs font-bold ${isPos ? 'text-brand-emerald' : 'text-brand-coral'}">
+            <span class="font-medium text-gray-200 truncate pr-1 text-[11px]" title="${item.label}">${item.label}</span>
+            <span class="font-mono text-xs font-bold flex-shrink-0 ${isPos ? 'text-brand-emerald' : 'text-brand-coral'}">
               ${isPos ? '+' : ''}${item.shap_impact.toFixed(4)}
-            </div>
+            </span>
           </div>
-          <div class="w-full bg-[#0E121C] rounded-full h-1.5 overflow-hidden flex">
-            ${isPos
-              ? `<div class="h-full bg-brand-emerald rounded-full transition-all duration-150" style="width: ${barPct}%;"></div>`
-              : `<div class="h-full bg-brand-coral rounded-full transition-all duration-150" style="width: ${barPct}%;"></div>`
-            }
+          <div class="flex items-center space-x-1.5">
+            <div class="w-full bg-[#0E121C] rounded-full h-1.5 overflow-hidden flex flex-1">
+              <div class="h-full ${isPos ? 'bg-brand-emerald' : 'bg-brand-coral'} rounded-full transition-all duration-150" style="width: ${barPct}%;"></div>
+            </div>
+            <span class="text-[9px] text-brand-slateText mono bg-black/40 px-1 py-0.2 rounded flex-shrink-0">val: ${item.value !== null ? item.value : 'NaN'}</span>
           </div>
         `;
         container.appendChild(row);

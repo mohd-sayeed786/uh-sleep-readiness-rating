@@ -143,9 +143,21 @@ Displaying an ungrounded raw decimal invites confusion. The engine couples conti
 
 ### Cold-Start Strategy (Day 1 Onboarding)
 When a new user begins using the ring:
-- The system flags `is_cold_start = True` whenever `checkin_seq_num <= 1` or when autoregressive features (`feeling_roll5_mean`, `user_expanding_mean`, `feeling_ewm_7`) and baseline z-scores are absent (`NaN`).
-- XGBoost natively routes missing baseline features along default tree branches, anchoring predictions to the population prior (~3.0–3.3 / Moderate tier).
-- The UI transparently indicates calibration mode while cumulative personal baselines accumulate over the initial check-ins.
+- **Detection Criteria:** The system flags `is_cold_start = True` whenever a user is on Day-1 onboarding (`checkin_seq_num <= 1`) or when historical personal baselines (autoregressive feelings `feeling_roll5_mean`, `user_expanding_mean` and sensor z-scores `total_sleep_minutes_zscore`, `avg_hr_bpm_zscore`, etc.) are absent (`NaN` / `null`). Established users with accumulated personal baselines evaluate to `is_cold_start = False`.
+- **Model Fallback Routing:** XGBoost natively routes missing baseline features along default learned split directions, anchoring readiness predictions safely to the population prior (~3.0–3.3 / Moderate tier).
+- **Interactive UI & API Testing:**
+  - **Simulator UI (`/simulator`):** Click the `❄️ Day 1 Test` button in the control deck to instantly simulate Day-1 cold start and observe the live `🟡 Day-1 Cold Start` badge. Click `↺ Reset` or adjust any slider to return to `● Baseline Active`.
+  - **API Verification:**
+    - Established user (`is_cold_start: false`):
+      ```bash
+      curl -s -X POST http://localhost:8000/features/calculate -H "Content-Type: application/json" \
+        -d '{"user_id": "UH-001", "checkin_date": "2026-03-20", "total_sleep_minutes": 450, "avg_hr_bpm": 58, "avg_hrv_rmssd_ms": 55, "recent_feeling_mean": 3.5}' | jq .features.checkin_seq_num
+      ```
+    - Day-1 onboarding user (`is_cold_start: true`):
+      ```bash
+      curl -s -X POST http://localhost:8000/features/calculate -H "Content-Type: application/json" \
+        -d '{"user_id": "UH-NEW", "checkin_date": "2026-03-20", "total_sleep_minutes": 420, "checkin_seq_num": 1}' | jq .features.checkin_seq_num
+      ```
 
 ---
 
@@ -159,7 +171,7 @@ The interactive simulator (`http://localhost:8000/simulator`) provides a single-
     - 🌙 *Sleep & Restorative (6 features)*: duration z-score, sleep debt, restorative sleep volume, deep z-score, REM z-score, restorative percentage.
     - 💓 *Autonomic & Stress (8 features)*: resting HR z-score, HRV z-score, stress index, recovery score, and expanding baseline ratios.
     - 🍷 *Alcohol & History (7 features)*: alcohol units, alcohol tier, alcohol $	imes$ HRV interaction, 5-day rolling feeling, 7-day EWM feeling, expanding historical mean.
-  - **SHAP Values Tab:** Real-time 21-feature TreeSHAP waterfall list displaying population base value, net contribution sum, and sorted positive/negative drivers.
+  - **SHAP Values Tab:** Real-time 21-feature TreeSHAP waterfall list rendered in a responsive 2-column grid with a quick toggle between `Top 10 Drivers` and `All 21 Features`, displaying population prior bias, net contribution sum, and sorted positive/negative drivers fitting cleanly without visual gaps.
 
 ### Key API Endpoints
 | Method | Endpoint | Description |
