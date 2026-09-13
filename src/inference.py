@@ -44,11 +44,16 @@ class ReadinessPredictor:
         self.model = self._load_model()
 
     def _load_model(self):
-        """Load pickled model artifact."""
+        """Load pickled model artifact, auto-generating at runtime if missing."""
         if not self.model_path.exists():
-            err_msg = f"Model file not found at {self.model_path}. Run training pipeline first."
-            logger.error(err_msg)
-            raise FileNotFoundError(err_msg)
+            logger.warning(f"Model file not found at {self.model_path}. Auto-generating champion model at runtime...")
+            try:
+                from src.train import train_model
+                train_model(save_model=True)
+            except Exception as e:
+                err_msg = f"Model file not found at {self.model_path} and auto-training failed: {e}"
+                logger.error(err_msg)
+                raise FileNotFoundError(err_msg)
 
         logger.info(f"Loading model artifact from {self.model_path}...")
         with open(self.model_path, "rb") as f:

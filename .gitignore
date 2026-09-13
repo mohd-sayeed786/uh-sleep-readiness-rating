@@ -30,3 +30,7 @@ logs/*.log
 # Data and image assets untracked per user request
 data/
 images/
+
+# Model artifacts (generated at run time)
+selected_model/
+model_selection/

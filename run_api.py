@@ -42,5 +42,12 @@ if __name__ == "__main__":
         print("  You can open the URLs above in your browser right away.\n")
         sys.exit(0)
 
+    from src.config import MODEL_PATH
+    if not MODEL_PATH.exists():
+        print("  Notice: Model artifact not found. Training model at runtime from raw data...")
+        from src.train import train_model
+        train_model(save_model=True)
+        print("  Champion model trained successfully!\n")
+
     print("  Starting server... Press Ctrl+C to terminate.\n")
     uvicorn.run("src.api:app", host=host, port=port, reload=False)
