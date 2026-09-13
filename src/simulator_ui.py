@@ -896,10 +896,14 @@ SIMULATOR_HTML = """<!DOCTYPE html>
           <span>✔ Model Retrained &amp; Validated</span>
           <span id="pipeModelVersion" class="mono text-[10px] text-gray-400">v2.0</span>
         </div>
-        <div class="grid grid-cols-3 gap-2 text-center">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
           <div class="bg-[#0E121C]/80 rounded-xl p-2 border border-brand-emerald/20">
             <div class="text-[10px] text-gray-400 uppercase">Holdout RMSE</div>
             <div class="text-sm font-mono font-bold text-brand-emerald" id="pipeMetricRmse">0.556</div>
+          </div>
+          <div class="bg-[#0E121C]/80 rounded-xl p-2 border border-purple-500/20">
+            <div class="text-[10px] text-gray-400 uppercase">Holdout R²</div>
+            <div class="text-sm font-mono font-bold text-purple-400" id="pipeMetricR2">0.633</div>
           </div>
           <div class="bg-[#0E121C]/80 rounded-xl p-2 border border-brand-teal/20">
             <div class="text-[10px] text-gray-400 uppercase">Exact Acc</div>
@@ -1531,6 +1535,7 @@ SIMULATOR_HTML = """<!DOCTYPE html>
 
         const testMetrics = trainResult.metrics && trainResult.metrics.test ? trainResult.metrics.test : {};
         document.getElementById('pipeMetricRmse').innerText = testMetrics.rmse !== undefined ? testMetrics.rmse.toFixed(3) : '0.556';
+        document.getElementById('pipeMetricR2').innerText = testMetrics.r2 !== undefined ? testMetrics.r2.toFixed(3) : '0.633';
         document.getElementById('pipeMetricAcc').innerText = testMetrics.exact_accuracy !== undefined ? (testMetrics.exact_accuracy * 100).toFixed(1) + '%' : '65.2%';
         document.getElementById('pipeMetricAccPm1').innerText = testMetrics.accuracy_pm1 !== undefined ? (testMetrics.accuracy_pm1 * 100).toFixed(1) + '%' : '98.5%';
         document.getElementById('pipeModelVersion').innerText = trainResult.archived_as || 'v2.0';

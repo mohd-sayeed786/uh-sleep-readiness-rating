@@ -172,6 +172,7 @@ The interactive simulator (`http://localhost:8000/simulator`) provides a single-
     - 💓 *Autonomic & Stress (8 features)*: resting HR z-score, HRV z-score, stress index, recovery score, and expanding baseline ratios.
     - 🍷 *Alcohol & History (7 features)*: alcohol units, alcohol tier, alcohol $\times$ HRV interaction, 5-day rolling feeling, 7-day EWM feeling, expanding historical mean.
   - **Persistent TreeSHAP Section (Vacant Space Below Sliders):** Embedded directly beneath the active sliders in the previously vacant lower space—features live mini-tabs for `Top 10` (highest positive boosters), `Last 10` (most negative drags), and `All 21` features, displaying real-time population prior bias, net TreeSHAP contribution sum, and sorted signed impact bars simultaneously as sliders are adjusted.
+- **Live Pipeline Retrain Modal (`⚡ Retrain Pipeline`):** Triggers end-to-end retraining directly from the simulator navbar; executes all 4 pipeline phases with live animated progress bars and displays holdout validation cards: **Holdout RMSE**, **Holdout $R^2$**, **Exact Accuracy**, and **Acc $\pm 1$ Class**.
 
 ### Key API Endpoints
 | Method | Endpoint | Description |
