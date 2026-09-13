@@ -1,0 +1,7 @@
+[
+  "alcohol_units",
+  "total_sleep_minutes_zscore",
+  "avg_hr_bpm_zscore",
+  "avg_hrv_rmssd_ms_zscore",
+  "subjective_feeling_lag1"
+]

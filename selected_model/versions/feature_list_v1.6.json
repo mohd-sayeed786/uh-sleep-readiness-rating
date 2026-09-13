@@ -1,0 +1,15 @@
+[
+  "alcohol_units",
+  "had_alcohol",
+  "alcohol_level",
+  "week_of_year",
+  "total_sleep_minutes_zscore",
+  "avg_hr_bpm_zscore",
+  "avg_hrv_rmssd_ms_zscore",
+  "subjective_feeling_lag1",
+  "days_since_bad_sleep",
+  "days_since_great_sleep",
+  "checkin_seq_num",
+  "deep_rem_total",
+  "sleep_debt"
+]
