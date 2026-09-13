@@ -312,7 +312,7 @@ SIMULATOR_HTML = """<!DOCTYPE html>
                 <span>Auto-Synced</span>
               </span>
               <button onclick="applyPreset('baseline')" class="text-brand-emerald hover:underline font-semibold flex items-center space-x-1">
-                <span>↻</span> <span>Reset Baseline</span>
+                <span>↺</span> <span>Reset Baseline</span>
               </button>
             </div>
           </div>
@@ -453,20 +453,20 @@ SIMULATOR_HTML = """<!DOCTYPE html>
                            class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onRawChange()">
                     <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
                       <span>1 (Poor)</span>
-                      <span>3</span>
+                      <span>3 (Neutral)</span>
                       <span>5 (Prime)</span>
                     </div>
                   </div>
 
                   <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5">
                     <div class="flex justify-between text-xs mb-1">
-                      <span class="text-gray-300 font-medium">Days Post Bad</span>
+                      <span class="text-gray-300 font-medium">Days Post Bad Sleep</span>
                       <span class="font-mono text-gray-300 font-bold text-xs" id="raw_val_bad_days">7 d</span>
                     </div>
                     <input type="range" id="raw_bad_days" min="0" max="30" step="1" value="7"
                            class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onRawChange()">
                     <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                      <span>0d</span>
+                      <span>0d (Recent)</span>
                       <span>15d</span>
                       <span>30d</span>
                     </div>
@@ -474,13 +474,13 @@ SIMULATOR_HTML = """<!DOCTYPE html>
 
                   <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5">
                     <div class="flex justify-between text-xs mb-1">
-                      <span class="text-gray-300 font-medium">Days Post Great</span>
+                      <span class="text-gray-300 font-medium">Days Post Great Sleep</span>
                       <span class="font-mono text-gray-300 font-bold text-xs" id="raw_val_great_days">1 d</span>
                     </div>
                     <input type="range" id="raw_great_days" min="0" max="30" step="1" value="1"
                            class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onRawChange()">
                     <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                      <span>0d</span>
+                      <span>0d (Today)</span>
                       <span>15d</span>
                       <span>30d</span>
                     </div>
@@ -491,12 +491,12 @@ SIMULATOR_HTML = """<!DOCTYPE html>
             </div>
 
             <!-- ========================================================= -->
-            <!-- TAB 2: ENGINEERED FEATURES CONTROLS                       -->
+            <!-- TAB 2: ENGINEERED FEATURES CONTROLS (Z-Scores & Temporal)  -->
             <!-- ========================================================= -->
             <div id="viewFeatures" class="space-y-3.5 flex-1 flex flex-col justify-between overflow-y-auto pr-1">
               <div class="bg-[#151B27] p-2.5 rounded-xl border border-white/5 text-xs text-brand-slateText flex items-center justify-between">
-                <span>Directly control the 13 production features consumed by the model.</span>
-                <span class="mono text-[11px] text-brand-emerald font-semibold">13 Model Dimensions</span>
+                <span>Directly tune model feature inputs (z-scores, debt minutes, cyclical anchors).</span>
+                <span class="mono text-[11px] text-brand-teal font-semibold">13 Live ML Features</span>
               </div>
 
               <!-- SECTION 1: Sleep Telemetry -->
@@ -512,7 +512,7 @@ SIMULATOR_HTML = """<!DOCTYPE html>
                       <span class="font-mono text-brand-emerald font-bold text-xs" id="val_sleep_z">+0.80 &sigma;</span>
                     </div>
                     <input type="range" id="param_sleep_z" min="-3.0" max="3.0" step="0.1" value="0.8"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
+                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange('sleep_z')">
                     <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
                       <span>-3.0 (Short)</span>
                       <span>0.0 (Average)</span>
@@ -526,7 +526,7 @@ SIMULATOR_HTML = """<!DOCTYPE html>
                       <span class="font-mono text-brand-emerald font-bold text-xs" id="val_sleep_debt">+20 min</span>
                     </div>
                     <input type="range" id="param_sleep_debt" min="-120" max="120" step="5" value="20"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
+                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange('sleep_debt')">
                     <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
                       <span>-120m (Debt)</span>
                       <span>0m</span>
@@ -662,11 +662,11 @@ SIMULATOR_HTML = """<!DOCTYPE html>
                 <div class="grid grid-cols-2 gap-2.5 pt-0.5">
                   <div class="bg-[#171D2B] p-2 rounded-xl border border-white/5 flex items-center justify-between text-xs">
                     <span class="text-brand-slateText">Check-in Sequence:</span>
-                    <input type="number" id="param_seq" min="1" max="100" value="25" class="w-14 bg-black/40 border border-white/10 rounded px-1.5 py-0.5 text-center font-mono text-white text-xs" onchange="onParamChange()">
+                    <input type="number" id="param_seq" min="1" max="100" value="25" class="w-14 bg-black/40 border border-white/10 rounded px-1.5 py-0.5 text-center font-mono text-white text-xs" oninput="onParamChange()" onchange="onParamChange()">
                   </div>
                   <div class="bg-[#171D2B] p-2 rounded-xl border border-white/5 flex items-center justify-between text-xs">
                     <span class="text-brand-slateText">Week of Year:</span>
-                    <input type="number" id="param_week" min="1" max="52" value="15" class="w-14 bg-black/40 border border-white/10 rounded px-1.5 py-0.5 text-center font-mono text-white text-xs" onchange="onParamChange()">
+                    <input type="number" id="param_week" min="1" max="52" value="15" class="w-14 bg-black/40 border border-white/10 rounded px-1.5 py-0.5 text-center font-mono text-white text-xs" oninput="onParamChange()" onchange="onParamChange()">
                   </div>
                 </div>
 
@@ -723,7 +723,7 @@ SIMULATOR_HTML = """<!DOCTYPE html>
     </div>
   </footer>
 
-  <!-- JavaScript Simulator & Zero-Latency Synchronization Logic -->
+  <!-- JavaScript Simulator & Model Synchronization Logic -->
   <script>
     // Presets catalog
     const PRESETS = {
@@ -832,8 +832,8 @@ SIMULATOR_HTML = """<!DOCTYPE html>
 
       // Sync into Features sliders
       document.getElementById('param_sleep_z').value = Math.max(-3.0, Math.min(3.0, sleep_z)).toFixed(1);
-      document.getElementById('param_sleep_debt').value = Math.round(sleep_debt);
-      document.getElementById('param_deep_rem').value = deep_rem;
+      document.getElementById('param_sleep_debt').value = Math.max(-120, Math.min(120, Math.round(sleep_debt)));
+      document.getElementById('param_deep_rem').value = Math.max(30, Math.min(240, deep_rem));
       document.getElementById('param_hr_z').value = Math.max(-3.0, Math.min(3.0, hr_z)).toFixed(1);
       document.getElementById('param_hrv_z').value = Math.max(-3.0, Math.min(3.0, hrv_z)).toFixed(1);
       document.getElementById('param_alcohol').value = rawAlcohol;
@@ -845,7 +845,17 @@ SIMULATOR_HTML = """<!DOCTYPE html>
     }
 
     // When FEATURES change -> compute and sync RAW
-    function onParamChange() {
+    function onParamChange(source) {
+      if (source === 'sleep_debt') {
+        const debt = parseFloat(document.getElementById('param_sleep_debt').value);
+        const z = debt / USER_BASE.std_sleep;
+        document.getElementById('param_sleep_z').value = Math.max(-3.0, Math.min(3.0, z)).toFixed(1);
+      } else if (source === 'sleep_z') {
+        const z = parseFloat(document.getElementById('param_sleep_z').value);
+        const debt = Math.round(z * USER_BASE.std_sleep);
+        document.getElementById('param_sleep_debt').value = Math.max(-120, Math.min(120, debt));
+      }
+
       const sleep_z = parseFloat(document.getElementById('param_sleep_z').value);
       const deep_rem = parseFloat(document.getElementById('param_deep_rem').value);
       const hr_z = parseFloat(document.getElementById('param_hr_z').value);
@@ -855,12 +865,12 @@ SIMULATOR_HTML = """<!DOCTYPE html>
       const bad_days = parseInt(document.getElementById('param_bad_days').value);
       const great_days = parseInt(document.getElementById('param_great_days').value);
 
-      // Compute estimated raw numbers
-      const estSleep = Math.round(USER_BASE.mean_sleep + (sleep_z * USER_BASE.std_sleep));
-      const estDeep = Math.round(deep_rem * 0.48);
-      const estRem = Math.round(deep_rem * 0.52);
-      const estHr = Math.round(USER_BASE.mean_hr + (hr_z * USER_BASE.std_hr));
-      const estHrv = Math.round(USER_BASE.mean_hrv + (hrv_z * USER_BASE.std_hrv));
+      // Compute estimated raw numbers within realistic bounds
+      const estSleep = Math.max(240, Math.min(600, Math.round(USER_BASE.mean_sleep + (sleep_z * USER_BASE.std_sleep))));
+      const estDeep = Math.max(10, Math.min(150, Math.round(deep_rem * 0.48)));
+      const estRem = Math.max(10, Math.min(160, Math.round(deep_rem * 0.52)));
+      const estHr = Math.max(40, Math.min(95, Math.round(USER_BASE.mean_hr + (hr_z * USER_BASE.std_hr))));
+      const estHrv = Math.max(15, Math.min(110, Math.round(USER_BASE.mean_hrv + (hrv_z * USER_BASE.std_hrv))));
 
       // Sync into Raw sliders
       document.getElementById('raw_sleep').value = estSleep;
@@ -931,11 +941,11 @@ SIMULATOR_HTML = """<!DOCTYPE html>
       const bad_days = parseInt(document.getElementById('param_bad_days').value);
       const great_days = parseInt(document.getElementById('param_great_days').value);
 
-      // Read raw values
+      // Read raw values (Fix: rawHr correctly reads raw_hr, not raw_hrv)
       const rawSleep = parseFloat(document.getElementById('raw_sleep').value);
       const rawDeep = parseFloat(document.getElementById('raw_deep').value);
       const rawRem = parseFloat(document.getElementById('raw_rem').value);
-      const rawHr = parseFloat(document.getElementById('raw_hrv').value);
+      const rawHr = parseFloat(document.getElementById('raw_hr').value);
       const rawHrv = parseFloat(document.getElementById('raw_hrv').value);
 
       // Update Raw Labels
@@ -1006,24 +1016,9 @@ SIMULATOR_HTML = """<!DOCTYPE html>
         document.getElementById('sleepEfficiencyStatus').className = 'text-[11px] text-brand-coral font-medium';
       }
 
-      // ZERO-LATENCY INSTANT LOCAL DIAL FEEDBACK (0ms)
-      const hadAlc = alcohol > 0 ? 1.0 : 0.0;
-      const alcLvl = alcohol <= 0 ? 0.0 : (alcohol <= 2.0 ? 1.0 : 2.0);
-      const fastScore = 3.2808
-        + (0.24 * sleep_z)
-        + (0.002 * sleep_debt)
-        - (0.16 * hr_z)
-        + (0.22 * hrv_z)
-        - (0.28 * hadAlc)
-        - (0.14 * alcLvl)
-        + (0.16 * (lag1 - 3))
-        - (0.02 * Math.max(0, 6 - bad_days))
-        + (0.02 * Math.max(0, 6 - great_days));
-      renderDialFast(fastScore, fastScore);
-
-      // Debounce server TreeSHAP computation with abort controller
+      // Live 20ms debounce: directly queries XGBoost tree inference & SHAP without score flicker or phantom scores
       clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(fetchPredictionAndShap, 80);
+      debounceTimer = setTimeout(fetchPredictionAndShap, 20);
     }
 
     async function fetchPredictionAndShap() {
@@ -1116,7 +1111,13 @@ SIMULATOR_HTML = """<!DOCTYPE html>
     }
 
     window.addEventListener('DOMContentLoaded', () => {
+      // Prevent trackpad / mousewheel accidental scroll on number inputs
+      document.querySelectorAll('input[type="number"]').forEach(el => {
+        el.addEventListener('wheel', (e) => e.target.blur(), { passive: true });
+      });
+
       syncUIFromValues();
+      fetchPredictionAndShap();
     });
   </script>
 </body>
