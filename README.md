@@ -163,16 +163,29 @@ When a new user begins using the ring:
 
 ## 6. Interactive Simulator & API Endpoints
 
-The interactive simulator (`http://localhost:8000/simulator`) provides a single-page control dashboard:
-- **Left Mobile Mirror:** Ultrahuman ring dial, readiness pill, recovery guidance cards, sleep architecture breakdowns, and autonomic biomarker cards.
-- **Right Control Deck (Tabbed 1-Page Layout):**
-  - **Raw Data Tab:** Sliders for raw sleep minutes, deep sleep, REM sleep, resting HR, HRV, alcohol units, and past feeling baseline; automatically computes and live-syncs all 21 features.
-  - **Engineered Features Tab:** Categorized into 3 sub-tabs keeping the UI clean and accessible:
-    - 🌙 *Sleep & Restorative (6 features)*: duration z-score, sleep debt, restorative sleep volume, deep z-score, REM z-score, restorative percentage.
-    - 💓 *Autonomic & Stress (8 features)*: resting HR z-score, HRV z-score, stress index, recovery score, and expanding baseline ratios.
-    - 🍷 *Alcohol & History (7 features)*: alcohol units, alcohol tier, alcohol $\times$ HRV interaction, 5-day rolling feeling, 7-day EWM feeling, expanding historical mean.
-  - **Persistent TreeSHAP Section (Vacant Space Below Sliders):** Embedded directly beneath the active sliders in the previously vacant lower space—features live mini-tabs for `Top 10` (highest positive boosters), `Last 10` (most negative drags), and `All 21` features, displaying real-time population prior bias, net TreeSHAP contribution sum, and sorted signed impact bars simultaneously as sliders are adjusted.
-- **Live Pipeline Retrain Modal (`⚡ Retrain Pipeline`):** Triggers end-to-end retraining directly from the simulator navbar; executes all 4 pipeline phases with live animated progress bars and displays holdout validation cards: **Holdout RMSE**, **Holdout $R^2$**, **Exact Accuracy**, and **Acc $\pm 1$ Class**.
+The interactive simulator (`http://localhost:8000/simulator`) features an uncluttered 2-page dashboard with matching viewport height and dedicated analytical depth:
+
+- **Page 1: Ring Readiness Simulator & Full-Length Control Deck**
+  - **Left Mobile Mirror:** Ultrahuman ring connected status, sleep/recovery/movement scores, radial readiness dial (e.g., `4.0 / 5 Optimal`, raw model output), and plain-language guidance cards (*Last Night's Rest*, *Today's Rhythm*, and *Tonight's Quick Win* with projected delta boost).
+  - **Right Control Deck (Full Height & Elongated Tabs):** Matches the left card height with generous breathing room and zero cramped scrollbars:
+    - **🔬 Raw Telemetry Tab:** Interactive sliders for raw sleep duration, deep sleep, REM sleep, resting HR, HRV RMSSD, alcohol units, and past feeling baseline; all 21 features update and live-sync in real time.
+    - **⚙️ Engineered Features (21) Tab:** Full-width 3-column sub-tab navigation:
+      - 🌙 *Sleep & Restorative (6 features)*: sleep duration z-score, sleep debt, restorative sleep volume, deep z-score, REM z-score, restorative sleep percentage.
+      - 💓 *Autonomic & Stress (8 features)*: resting HR z-score, HRV RMSSD z-score, physiological stress index, recovery score, and expanding user baseline ratios.
+      - 🍷 *Alcohol & History (7 features)*: alcohol units, alcohol tier, alcohol $\times$ HRV interaction, 5-day rolling feeling mean, 7-day EWM feeling, and expanding historical feeling mean.
+    - **Control Actions:** Quick preset buttons (`Optimal`, `Moderate`, `Alcohol`, `Deprived`), Day-1 cold-start simulator (`❄️ Day 1 Test`), and instant reset (`↺ Reset`).
+
+- **Page 2: Deep Sleep Architecture & TreeSHAP Explainability**
+  - **Left Deep Biomarkers Card:**
+    - *Sleep Architecture Breakdown:* Total sleep duration, 4-stage segmented bar (Deep 22%, REM 25%, Light 45%, Awake 8%), restorative volume, and sleep debt status.
+    - *Autonomic Biomarker Grid:* Ring PPG sensor cards with live status indicators for Resting HR (BPM), HRV (RMSSD ms), Skin Temperature Deviation (°C), and Sleep Efficiency (5 Cycles consistency).
+  - **Right TreeSHAP Explainability Waterfall:**
+    - Dedicated full-height card with live Population Prior Bias (`3.2805`) and Net TreeSHAP contribution sum.
+    - Interactive filter pills: `Top 10 Drivers` (highest positive boosters), `Last 10 Drivers` (most negative drags), and `All 21 Features`.
+    - Responsive 2-column signed waterfall with color-coded bars (Emerald = boosts readiness, Coral = penalizes score) and exact feature values.
+
+- **Seamless Navigation:** 1-click toggles in the top navbar (`📱 Page 1: Ring Simulator` vs `📊 Page 2: Biomarkers & TreeSHAP`) and bottom navigation pills allow instant transitions with live background synchronization across both views.
+- **Live Pipeline Retrain Modal (`⚡ Run Pipeline`):** Triggers end-to-end retraining directly from the simulator navbar; executes all 4 pipeline phases with live animated progress bars and displays holdout validation cards: **Holdout RMSE**, **Holdout $R^2$**, **Exact Accuracy**, and **Acc $\pm 1$ Class**.
 
 ### Key API Endpoints
 | Method | Endpoint | Description |

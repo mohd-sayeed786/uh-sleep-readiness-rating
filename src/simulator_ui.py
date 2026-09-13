@@ -14,6 +14,36 @@ SIMULATOR_HTML = """<!DOCTYPE html>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
+    let currentMainPage = 1;
+
+    function switchMainPage(pageNum) {
+      currentMainPage = pageNum;
+      const p1 = document.getElementById('page1Container');
+      const p2 = document.getElementById('page2Container');
+      const btn1 = document.getElementById('btnNavPage1');
+      const btn2 = document.getElementById('btnNavPage2');
+
+      const activeClass = 'page-nav-active px-3.5 py-1.5 text-xs font-bold rounded-xl transition flex items-center space-x-1.5 cursor-pointer';
+      const inactiveClass = 'px-3.5 py-1.5 text-xs font-semibold rounded-xl text-gray-400 hover:text-white transition flex items-center space-x-1.5 cursor-pointer';
+
+      if (pageNum === 1) {
+        if (p1) p1.classList.remove('hidden');
+        if (p2) p2.classList.add('hidden');
+        if (btn1) btn1.className = activeClass;
+        if (btn2) btn2.className = inactiveClass;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        if (p1) p1.classList.add('hidden');
+        if (p2) p2.classList.remove('hidden');
+        if (btn1) btn1.className = inactiveClass;
+        if (btn2) btn2.className = activeClass;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (latestShapData) {
+          renderShapBars(latestShapData.shap_breakdown, latestShapData.base_value);
+        }
+      }
+    }
+
     tailwind.config = {
       darkMode: 'class',
       theme: {
@@ -72,6 +102,13 @@ SIMULATOR_HTML = """<!DOCTYPE html>
       font-weight: 700;
       box-shadow: 0 4px 12px rgba(0, 229, 163, 0.12);
     }
+        .page-nav-active {
+      background: linear-gradient(135deg, rgba(0,229,163,0.24), rgba(0,210,180,0.12)) !important;
+      border: 1px solid rgba(0,229,163,0.5) !important;
+      color: #00E5A3 !important;
+      font-weight: 700 !important;
+      box-shadow: 0 4px 14px rgba(0, 229, 163, 0.18) !important;
+    }
     .subtab-active {
       background: linear-gradient(135deg, #00E5A3, #00D2B4) !important;
       color: #080A0F !important;
@@ -105,6 +142,16 @@ SIMULATOR_HTML = """<!DOCTYPE html>
         </div>
       </div>
 
+      <!-- Main Page Navigation (Page 1: Simulator vs Page 2: Biomarkers & SHAP) -->
+      <div class="hidden md:flex items-center space-x-1.5 bg-[#0D111A] p-1 rounded-2xl border border-white/10 shadow-inner">
+        <button id="btnNavPage1" onclick="switchMainPage(1)" class="page-nav-active px-3.5 py-1.5 text-xs font-bold rounded-xl transition flex items-center space-x-1.5 cursor-pointer">
+          <span>📱</span> <span>Page 1: Ring Simulator</span>
+        </button>
+        <button id="btnNavPage2" onclick="switchMainPage(2)" class="px-3.5 py-1.5 text-xs font-semibold rounded-xl text-gray-400 hover:text-white transition flex items-center space-x-1.5 cursor-pointer">
+          <span>📊</span> <span>Page 2: Biomarkers &amp; TreeSHAP</span>
+        </button>
+      </div>
+
       <!-- Quick Preset & Pipeline Action Triggers -->
       <div class="flex items-center space-x-2">
         <button onclick="applyPreset('prime')" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 border border-white/5 transition">
@@ -128,697 +175,754 @@ SIMULATOR_HTML = """<!DOCTYPE html>
   </header>
 
   <!-- Main Application Stage -->
+    <!-- Main Application Stage: Page 1 (Simulator & Features) and Page 2 (Biomarkers & SHAP) -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full">
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
 
-      <!-- LEFT: Mobile App Mirror Viewport (col-span-5) -->
-      <div class="lg:col-span-5 flex flex-col">
-        <div class="bg-brand-card rounded-3xl border border-brand-cardBorder p-5 sm:p-6 shadow-2xl relative overflow-hidden flex-1 flex flex-col justify-start space-y-3.5">
-          
-          <!-- Ambient Glow Backdrop behind Dial -->
-          <div id="ambientGlow" class="ambient-glow absolute -top-16 -left-16 w-72 h-72 rounded-full bg-brand-emerald/15 blur-3xl pointer-events-none transition-colors duration-500"></div>
+    <!-- =================================================================== -->
+    <!-- PAGE 1: RING READINESS SIMULATOR & CONTROL FEATURES (1-PAGE VIEW)   -->
+    <!-- =================================================================== -->
+    <div id="page1Container" class="space-y-4">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
 
-          <!-- Top Status Bar in Ring UI -->
-          <div>
-            <div class="flex items-center justify-between text-xs text-brand-slateText mb-2">
-              <span class="flex items-center space-x-1.5">
-                <span class="h-2 w-2 rounded-full bg-brand-emerald animate-pulse"></span>
-                <span class="font-semibold text-gray-300 tracking-wide">RING CONNECTED</span>
-              </span>
-              <div class="flex items-center space-x-2">
-                <span id="coldStartBadge" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-brand-emerald/10 text-brand-emerald border border-brand-emerald/20 flex items-center space-x-1">
-                  <span class="inline-block w-1.5 h-1.5 rounded-full bg-brand-emerald"></span>
-                  <span id="coldStartBadgeText">Baseline Active</span>
+        <!-- LEFT: Mobile App Mirror Viewport (col-span-5) -->
+        <div class="lg:col-span-5 flex flex-col">
+          <div class="bg-brand-card rounded-3xl border border-brand-cardBorder p-5 sm:p-6 shadow-2xl relative overflow-hidden flex-1 flex flex-col justify-start space-y-3.5">
+            
+            <!-- Ambient Glow Backdrop behind Dial -->
+            <div id="ambientGlow" class="ambient-glow absolute -top-16 -left-16 w-72 h-72 rounded-full bg-brand-emerald/15 blur-3xl pointer-events-none transition-colors duration-500"></div>
+
+            <!-- Top Status Bar in Ring UI -->
+            <div>
+              <div class="flex items-center justify-between text-xs text-brand-slateText mb-2">
+                <span class="flex items-center space-x-1.5">
+                  <span class="h-2 w-2 rounded-full bg-brand-emerald animate-pulse"></span>
+                  <span class="font-semibold text-gray-300 tracking-wide">RING CONNECTED</span>
                 </span>
-                <span class="font-mono text-[11px] text-gray-400">SYNCED 07:15 AM</span>
-              </div>
-            </div>
-
-            <!-- Header Ring Metrics Strip -->
-            <div class="grid grid-cols-3 gap-2 text-center my-2">
-              <div class="bg-[#182030]/80 border border-white/5 rounded-2xl py-2 px-1">
-                <div class="text-[10px] uppercase tracking-wider font-semibold text-brand-slateText">SLEEP</div>
-                <div class="text-lg font-bold text-white tracking-tight" id="badgeSleep">88</div>
-              </div>
-              <div class="bg-[#182030]/80 border border-brand-emerald/30 rounded-2xl py-2 px-1 relative">
-                <span class="absolute -top-1.5 right-2 h-2 w-2 rounded-full bg-brand-emerald"></span>
-                <div class="text-[10px] uppercase tracking-wider font-semibold text-brand-emerald">RECOVERY</div>
-                <div class="text-lg font-extrabold text-white tracking-tight" id="badgeRecovery">92</div>
-              </div>
-              <div class="bg-[#182030]/80 border border-white/5 rounded-2xl py-2 px-1">
-                <div class="text-[10px] uppercase tracking-wider font-semibold text-brand-slateText">MOVEMENT</div>
-                <div class="text-lg font-bold text-white tracking-tight" id="badgeMovement">76</div>
-              </div>
-            </div>
-
-            <!-- Hero Radial Readiness Gauge -->
-            <div class="flex flex-col items-center justify-center my-1 relative">
-              <div class="relative w-48 h-48 flex items-center justify-center">
-                <svg class="w-full h-full -rotate-90 transform" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="42" stroke="#1E2536" stroke-width="8" fill="none" stroke-linecap="round"></circle>
-                  <circle id="gaugeArc" cx="50" cy="50" r="42" stroke="#00E5A3" stroke-width="8.5" fill="none"
-                          stroke-dasharray="263.89" stroke-dashoffset="50" stroke-linecap="round"
-                          class="transition-[stroke-dashoffset] duration-75 ease-out"></circle>
-                </svg>
-
-                <div class="absolute inset-0 flex flex-col items-center justify-center text-center select-none">
-                  <span class="text-[10px] uppercase tracking-widest text-brand-slateText font-semibold">READINESS</span>
-                  <div class="flex items-baseline space-x-1 my-0.5">
-                    <span id="scoreDisplay" class="text-4xl font-black tracking-tight text-white">4.2</span>
-                    <span class="text-sm font-semibold text-brand-slateText">/ 5</span>
-                  </div>
-                  <div id="tierBadge" class="mt-0.5 px-3 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-brand-emerald/15 text-brand-emerald border border-brand-emerald/30">
-                    OPTIMAL
-                  </div>
-                </div>
-              </div>
-
-              <!-- Monospace Raw Score output safely below dial arc -->
-              <div class="text-[11px] text-brand-slateText mt-1.5 mono font-medium text-center" id="rawScoreSubtext">
-                Raw Model Output: 4.187
-              </div>
-            </div>
-
-            <!-- Everyday Recovery & Daily Rhythm -->
-            <div class="bg-[#161D2B] border border-white/5 rounded-2xl p-3.5 relative overflow-hidden space-y-3">
-              <!-- Section 1: Last Night's Rest -->
-              <div>
-                <div class="flex items-center justify-between text-[11px] font-bold tracking-wider text-brand-slateText uppercase mb-1">
-                  <span class="flex items-center space-x-1.5">
-                    <svg class="w-3.5 h-3.5 text-brand-emerald" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    <span>Last Night's Rest</span>
+                <div class="flex items-center space-x-2">
+                  <span id="coldStartBadge" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-brand-emerald/10 text-brand-emerald border border-brand-emerald/20 flex items-center space-x-1">
+                    <span class="inline-block w-1.5 h-1.5 rounded-full bg-brand-emerald"></span>
+                    <span id="coldStartBadgeText">Baseline Active</span>
                   </span>
-                  <span id="recoveryPill" class="text-[10px] px-2 py-0.5 rounded font-mono bg-brand-emerald/10 text-brand-emerald border border-brand-emerald/20">Fully Charged</span>
+                  <span class="font-mono text-[11px] text-gray-400">SYNCED 07:15 AM</span>
                 </div>
-                <p id="recoveryAssessmentText" class="text-xs text-gray-300 leading-relaxed">
-                  Deep, high-quality recharge (4.65/5). Calm resting heart rate and strong restorative stages left your body fully topped up.
-                </p>
               </div>
 
-              <!-- Section 2: Today's Rhythm -->
-              <div class="pt-2 border-t border-white/5">
-                <div class="flex items-center space-x-1.5 text-[11px] font-bold tracking-wider text-brand-teal uppercase mb-1">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                  <span>Today's Rhythm</span>
+              <!-- Header Ring Metrics Strip -->
+              <div class="grid grid-cols-3 gap-2 text-center my-2">
+                <div class="bg-[#182030]/80 border border-white/5 rounded-2xl py-2 px-1">
+                  <div class="text-[10px] uppercase tracking-wider font-semibold text-brand-slateText">SLEEP</div>
+                  <div class="text-lg font-bold text-white tracking-tight" id="badgeSleep">88</div>
                 </div>
-                <p id="whatToDoText" class="text-xs text-gray-200 leading-relaxed">
-                  You're primed to go! Perfect day for a challenging workout, aiming for a personal best, or tackling high-focus projects.
-                </p>
+                <div class="bg-[#182030]/80 border border-brand-emerald/30 rounded-2xl py-2 px-1 relative">
+                  <span class="absolute -top-1.5 right-2 h-2 w-2 rounded-full bg-brand-emerald"></span>
+                  <div class="text-[10px] uppercase tracking-wider font-semibold text-brand-emerald">RECOVERY</div>
+                  <div class="text-lg font-extrabold text-white tracking-tight" id="badgeRecovery">92</div>
+                </div>
+                <div class="bg-[#182030]/80 border border-white/5 rounded-2xl py-2 px-1">
+                  <div class="text-[10px] uppercase tracking-wider font-semibold text-brand-slateText">MOVEMENT</div>
+                  <div class="text-lg font-bold text-white tracking-tight" id="badgeMovement">76</div>
+                </div>
               </div>
 
-              <!-- Section 3: Tonight's Quick Win -->
-              <div id="leverCard" class="bg-black/40 border border-brand-emerald/20 rounded-xl p-2.5 flex items-center justify-between">
-                <div class="space-y-0.5 pr-2">
-                  <div class="text-[10px] font-semibold text-brand-slateText uppercase">Tonight's Quick Win:</div>
-                  <div id="leverActionText" class="text-xs text-gray-200 font-medium">Head to bed 45 mins earlier to erase sleep debt</div>
+              <!-- Hero Radial Readiness Gauge -->
+              <div class="flex flex-col items-center justify-center my-1 relative">
+                <div class="relative w-48 h-48 flex items-center justify-center">
+                  <svg class="w-full h-full -rotate-90 transform" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="42" stroke="#1E2536" stroke-width="8" fill="none" stroke-linecap="round"></circle>
+                    <circle id="gaugeArc" cx="50" cy="50" r="42" stroke="#00E5A3" stroke-width="8.5" fill="none"
+                            stroke-dasharray="263.89" stroke-dashoffset="50" stroke-linecap="round"
+                            class="transition-[stroke-dashoffset] duration-75 ease-out"></circle>
+                  </svg>
+
+                  <div class="absolute inset-0 flex flex-col items-center justify-center text-center select-none">
+                    <span class="text-[10px] uppercase tracking-widest text-brand-slateText font-semibold">READINESS</span>
+                    <div class="flex items-baseline space-x-1 my-0.5">
+                      <span id="scoreDisplay" class="text-4xl font-black tracking-tight text-white">4.2</span>
+                      <span class="text-sm font-semibold text-brand-slateText">/ 5</span>
+                    </div>
+                    <div id="tierBadge" class="mt-0.5 px-3 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-brand-emerald/15 text-brand-emerald border border-brand-emerald/30">
+                      OPTIMAL
+                    </div>
+                  </div>
                 </div>
-                <div class="text-right flex-shrink-0">
-                  <div class="text-[10px] text-gray-400 uppercase font-mono">Tomorrow's Boost</div>
-                  <div class="text-xs font-mono font-bold text-brand-emerald" id="leverDeltaText">+0.45 pts</div>
+
+                <!-- Monospace Raw Score output safely below dial arc -->
+                <div class="text-[11px] text-brand-slateText mt-1.5 mono font-medium text-center" id="rawScoreSubtext">
+                  Raw Model Output: 4.187
                 </div>
               </div>
+
+              <!-- Everyday Recovery & Daily Rhythm -->
+              <div class="bg-[#161D2B] border border-white/5 rounded-2xl p-3.5 relative overflow-hidden space-y-3">
+                <!-- Section 1: Last Night's Rest -->
+                <div>
+                  <div class="flex items-center justify-between text-[11px] font-bold tracking-wider text-brand-slateText uppercase mb-1">
+                    <span class="flex items-center space-x-1.5">
+                      <svg class="w-3.5 h-3.5 text-brand-emerald" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                      <span>Last Night's Rest</span>
+                    </span>
+                    <span id="recoveryPill" class="text-[10px] px-2 py-0.5 rounded font-mono bg-brand-emerald/10 text-brand-emerald border border-brand-emerald/20">Fully Charged</span>
+                  </div>
+                  <p id="recoveryAssessmentText" class="text-xs text-gray-300 leading-relaxed">
+                    Deep, high-quality recharge (4.65/5). Calm resting heart rate and strong restorative stages left your body fully topped up.
+                  </p>
+                </div>
+
+                <!-- Section 2: Today's Rhythm -->
+                <div class="pt-2 border-t border-white/5">
+                  <div class="flex items-center space-x-1.5 text-[11px] font-bold tracking-wider text-brand-teal uppercase mb-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    <span>Today's Rhythm</span>
+                  </div>
+                  <p id="whatToDoText" class="text-xs text-gray-200 leading-relaxed">
+                    You're primed to go! Perfect day for a challenging workout, aiming for a personal best, or tackling high-focus projects.
+                  </p>
+                </div>
+
+                <!-- Section 3: Tonight's Quick Win -->
+                <div id="leverCard" class="bg-black/40 border border-brand-emerald/20 rounded-xl p-2.5 flex items-center justify-between">
+                  <div class="space-y-0.5 pr-2">
+                    <div class="text-[10px] font-semibold text-brand-slateText uppercase">Tonight's Quick Win:</div>
+                    <div id="leverActionText" class="text-xs text-gray-200 font-medium">Head to bed 45 mins earlier to erase sleep debt</div>
+                  </div>
+                  <div class="text-right flex-shrink-0">
+                    <div class="text-[10px] text-gray-400 uppercase font-mono">Tomorrow's Boost</div>
+                    <div class="text-xs font-mono font-bold text-brand-emerald" id="leverDeltaText">+0.45 pts</div>
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
+        </div>
 
-          <!-- Sleep Architecture & Autonomic Telemetry Section -->
-          <div class="space-y-3 pt-1">
-            <!-- Sleep Architecture Summary Card -->
-            <div class="bg-[#161D2B] border border-white/5 rounded-2xl p-3">
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-semibold uppercase tracking-wider text-brand-slateText">Sleep Architecture</span>
-                <span class="text-xs font-bold text-white mono" id="totalSleepDurationText">7h 35m</span>
+        <!-- RIGHT: Full-Length Tab-Driven Interactive Control Deck (col-span-7) -->
+        <div class="lg:col-span-7 flex flex-col">
+          <div class="bg-brand-card rounded-3xl border border-brand-cardBorder p-6 shadow-xl flex-1 flex flex-col justify-between space-y-4">
+            
+            <!-- Tab Navigation Header -->
+            <div class="border-b border-brand-cardBorder pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div class="flex items-center space-x-2 bg-[#0A0D15] p-1.5 rounded-2xl border border-white/10 shadow-inner">
+                  <button id="tabBtnRaw" onclick="switchTab('raw')" class="px-5 py-2 text-xs font-bold rounded-xl transition text-gray-300 hover:text-white flex items-center space-x-2 tracking-wide cursor-pointer">
+                    <span>🔬</span> <span>Raw Telemetry</span>
+                  </button>
+                  <button id="tabBtnFeatures" onclick="switchTab('features')" class="tab-active px-5 py-2 text-xs font-bold rounded-xl transition text-gray-300 hover:text-white flex items-center space-x-2 tracking-wide cursor-pointer">
+                    <span>⚙️</span> <span>Engineered Features (21)</span>
+                  </button>
+                </div>
               </div>
 
-              <!-- Segmented Stage Progress Bar -->
-              <div class="w-full h-3 rounded-full bg-[#0D111A] flex overflow-hidden border border-white/5">
+              <!-- Sync Indicator, Cold Start Toggle & Quick Reset -->
+              <div class="flex items-center space-x-2 text-xs">
+                <span id="uiColdStartStatus" class="flex items-center space-x-1 px-2 py-0.5 rounded-lg bg-brand-emerald/10 text-brand-emerald border border-brand-emerald/20 font-mono text-[11px]">
+                  <span id="uiColdStartDot" class="inline-block w-1.5 h-1.5 rounded-full bg-brand-emerald"></span>
+                  <span id="uiColdStartText">Baseline Active</span>
+                </span>
+                <button onclick="applyPreset('cold_start')" id="btnColdStart" class="px-2.5 py-1 rounded-lg border border-brand-amber/30 bg-brand-amber/10 hover:bg-brand-amber/20 text-brand-amber font-semibold flex items-center space-x-1 transition text-xs cursor-pointer" title="Simulate Day-1 Onboarding without personal baselines">
+                  <span>❄️</span> <span>Day 1 Test</span>
+                </button>
+                <button onclick="applyPreset('baseline')" class="px-2.5 py-1 rounded-lg border border-brand-emerald/30 bg-brand-emerald/10 hover:bg-brand-emerald/20 text-brand-emerald font-semibold flex items-center space-x-1 transition text-xs cursor-pointer">
+                  <span>↺</span> <span>Reset</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- TAB VIEWPORT CONTAINER (Full Comfortable Height, Matching Screen) -->
+            <div class="flex-1 flex flex-col min-h-[460px]">
+
+              <!-- TAB 1: RAW INPUTS CONTROLS -->
+              <div id="viewRaw" class="hidden space-y-3.5 overflow-y-auto pr-1">
+                <div class="bg-[#151B27] p-2.5 rounded-xl border border-white/5 text-xs text-brand-slateText flex items-center justify-between">
+                  <span>Adjust raw sensor readings &amp; lifestyle habits; all 21 features update live.</span>
+                  <span class="mono text-[11px] text-brand-emerald font-semibold">Formula: z = (x - &mu;) / &sigma;</span>
+                </div>
+
+                <!-- Sleep Architecture Sliders -->
+                <div class="space-y-2">
+                  <h4 class="text-xs font-bold uppercase tracking-wider text-brand-purple flex items-center space-x-1.5">
+                    <span>🌙</span> <span>Sleep Duration &amp; Stages</span>
+                  </h4>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="bg-[#171D2B]/90 hover:bg-[#1C2333] p-3 rounded-2xl border border-white/5 transition">
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-300 font-medium">Total Sleep Time</span>
+                        <span class="font-mono text-brand-emerald font-bold text-xs" id="raw_val_sleep">440 min (7.3h)</span>
+                      </div>
+                      <input type="range" id="raw_sleep" min="200" max="600" step="10" value="440"
+                             class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onRawChange()">
+                      <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>200m (3.3h)</span>
+                        <span>440m (Baseline)</span>
+                        <span>600m (10h)</span>
+                      </div>
+                    </div>
+
+                    <div class="bg-[#171D2B]/90 hover:bg-[#1C2333] p-3 rounded-2xl border border-white/5 transition">
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-300 font-medium">Deep Slow-Wave Sleep</span>
+                        <span class="font-mono text-brand-purple font-bold text-xs" id="raw_val_deep">70 min</span>
+                      </div>
+                      <input type="range" id="raw_deep" min="10" max="150" step="5" value="70"
+                             class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onRawChange()">
+                      <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>10m</span>
+                        <span>70m (Normal)</span>
+                        <span>150m</span>
+                      </div>
+                    </div>
+
+                    <div class="bg-[#171D2B]/90 hover:bg-[#1C2333] p-3 rounded-2xl border border-white/5 transition sm:col-span-2">
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-300 font-medium">REM Sleep</span>
+                        <span class="font-mono text-brand-teal font-bold text-xs" id="raw_val_rem">75 min</span>
+                      </div>
+                      <input type="range" id="raw_rem" min="10" max="160" step="5" value="75"
+                             class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onRawChange()">
+                      <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>10m</span>
+                        <span>75m (Normal)</span>
+                        <span>160m</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Physiological Sensors (BPM & MS) -->
+                <div class="space-y-2">
+                  <h4 class="text-xs font-bold uppercase tracking-wider text-brand-teal flex items-center space-x-1.5">
+                    <span>💓</span> <span>Ring PPG Sensors (Heart &amp; Autonomic)</span>
+                  </h4>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="bg-[#171D2B]/90 hover:bg-[#1C2333] p-3 rounded-2xl border border-white/5 transition">
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-300 font-medium">Resting Heart Rate (BPM)</span>
+                        <span class="font-mono text-brand-emerald font-bold text-xs" id="raw_val_hr">57 BPM</span>
+                      </div>
+                      <input type="range" id="raw_hr" min="40" max="95" step="1" value="57"
+                             class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onRawChange()">
+                      <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>40 BPM (Low)</span>
+                        <span>60 BPM (Mean)</span>
+                        <span>95 BPM</span>
+                      </div>
+                    </div>
+
+                    <div class="bg-[#171D2B]/90 hover:bg-[#1C2333] p-3 rounded-2xl border border-white/5 transition">
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-300 font-medium">HRV RMSSD (ms)</span>
+                        <span class="font-mono text-brand-emerald font-bold text-xs" id="raw_val_hrv">62 ms</span>
+                      </div>
+                      <input type="range" id="raw_hrv" min="15" max="110" step="1" value="62"
+                             class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onRawChange()">
+                      <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>15 ms (Low)</span>
+                        <span>48 ms (Mean)</span>
+                        <span>110 ms</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Habits & History -->
+                <div class="space-y-2">
+                  <h4 class="text-xs font-bold uppercase tracking-wider text-brand-amber flex items-center space-x-1.5">
+                    <span>🍷</span> <span>Lifestyle &amp; Autoregressive Baseline</span>
+                  </h4>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="bg-[#171D2B]/90 hover:bg-[#1C2333] p-3 rounded-2xl border border-white/5 transition">
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-300 font-medium">Alcohol Units (Standard Drinks)</span>
+                        <span class="font-mono text-brand-coral font-bold text-xs" id="raw_val_alcohol">0.0 units</span>
+                      </div>
+                      <input type="range" id="raw_alcohol" min="0" max="6" step="0.5" value="0.0"
+                             class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onRawChange()">
+                      <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>0.0 (None)</span>
+                        <span>2.0 (Moderate)</span>
+                        <span>6.0 (Heavy)</span>
+                      </div>
+                    </div>
+
+                    <div class="bg-[#171D2B]/90 hover:bg-[#1C2333] p-3 rounded-2xl border border-white/5 transition">
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-300 font-medium">Recent Feeling Baseline</span>
+                        <span class="font-mono text-brand-amber font-bold text-xs" id="raw_val_feeling">3.5 / 5</span>
+                      </div>
+                      <input type="range" id="raw_feeling" min="1.0" max="5.0" step="0.1" value="3.5"
+                             class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onRawChange()">
+                      <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>1.0 (Exhausted)</span>
+                        <span>3.0 (Steady)</span>
+                        <span>5.0 (Optimal)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- TAB 2: ENGINEERED FEATURES (Organized in 3 Sub-Tabs) -->
+              <div id="viewFeatures" class="space-y-3.5 overflow-y-auto pr-1">
+                
+                <!-- Sub-Tab Category Pill Selector (Spacious Full-Width Grid) -->
+                <div class="grid grid-cols-3 gap-2 bg-[#0D111A] p-1.5 rounded-2xl border border-white/10 shadow-inner">
+                  <button id="subTabBtnSleep" onclick="switchFeatureSubTab('sleep')" class="subtab-active py-2 px-3 text-xs font-bold rounded-xl transition text-center flex items-center justify-center space-x-1.5 shadow-sm cursor-pointer">
+                    <span>🌙</span> <span>Sleep &amp; Restorative (6)</span>
+                  </button>
+                  <button id="subTabBtnRecovery" onclick="switchFeatureSubTab('recovery')" class="py-2 px-3 text-xs font-semibold rounded-xl transition text-gray-400 hover:text-white text-center flex items-center justify-center space-x-1.5 cursor-pointer">
+                    <span>💓</span> <span>Autonomic &amp; Stress (8)</span>
+                  </button>
+                  <button id="subTabBtnAlcohol" onclick="switchFeatureSubTab('alcohol')" class="py-2 px-3 text-xs font-semibold rounded-xl transition text-gray-400 hover:text-white text-center flex items-center justify-center space-x-1.5 cursor-pointer">
+                    <span>🍷</span> <span>Alcohol &amp; History (7)</span>
+                  </button>
+                </div>
+
+                <!-- SUB-TAB 1: Sleep & Restorative (6 Features) -->
+                <div id="featSubSleep" class="space-y-3">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="bg-[#171D2B]/90 hover:bg-[#1C2333] p-3 rounded-2xl border border-white/5 transition">
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-300 font-medium">Sleep Duration Z-Score</span>
+                        <span class="font-mono text-brand-emerald font-bold text-xs" id="val_sleep_z">+0.80 &sigma;</span>
+                      </div>
+                      <input type="range" id="param_sleep_z" min="-3.0" max="3.0" step="0.1" value="0.8"
+                             class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
+                      <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>-3.0 (Short)</span><span>0.0</span><span>+3.0 (Long)</span>
+                      </div>
+                    </div>
+
+                    <div class="bg-[#171D2B]/90 hover:bg-[#1C2333] p-3 rounded-2xl border border-white/5 transition">
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-300 font-medium">Sleep Deficit / Surplus</span>
+                        <span class="font-mono text-brand-emerald font-bold text-xs" id="val_sleep_debt">+20 min</span>
+                      </div>
+                      <input type="range" id="param_sleep_debt" min="-120" max="120" step="5" value="20"
+                             class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
+                      <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>-120m</span><span>0m</span><span>+120m</span>
+                      </div>
+                    </div>
+
+                    <div class="bg-[#171D2B]/90 hover:bg-[#1C2333] p-3 rounded-2xl border border-white/5 transition sm:col-span-2">
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-300 font-medium">Restorative Sleep (Deep + REM Minutes)</span>
+                        <span class="font-mono text-brand-purple font-bold text-xs" id="val_deep_rem">145 min</span>
+                      </div>
+                      <input type="range" id="param_deep_rem" min="30" max="240" step="5" value="145"
+                             class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
+                      <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>30m</span><span>120m (Mean)</span><span>240m</span>
+                      </div>
+                    </div>
+
+                    <div class="bg-[#171D2B]/90 hover:bg-[#1C2333] p-3 rounded-2xl border border-white/5 transition">
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-300 font-medium">Deep Sleep Z-Score</span>
+                        <span class="font-mono text-brand-emerald font-bold text-xs" id="val_deep_z">+0.30 &sigma;</span>
+                      </div>
+                      <input type="range" id="param_deep_z" min="-3.0" max="3.0" step="0.1" value="0.3"
+                             class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
+                      <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>-3.0</span><span>0.0</span><span>+3.0</span>
+                      </div>
+                    </div>
+
+                    <div class="bg-[#171D2B]/90 hover:bg-[#1C2333] p-3 rounded-2xl border border-white/5 transition">
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-300 font-medium">REM Sleep Z-Score</span>
+                        <span class="font-mono text-brand-emerald font-bold text-xs" id="val_rem_z">+0.40 &sigma;</span>
+                      </div>
+                      <input type="range" id="param_rem_z" min="-3.0" max="3.0" step="0.1" value="0.4"
+                             class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
+                      <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>-3.0</span><span>0.0</span><span>+3.0</span>
+                      </div>
+                    </div>
+
+                    <div class="bg-[#171D2B]/90 hover:bg-[#1C2333] p-3 rounded-2xl border border-white/5 transition sm:col-span-2">
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-300 font-medium">Restorative Sleep Ratio (%)</span>
+                        <span class="font-mono text-brand-teal font-bold text-xs" id="val_restorative_pct">33%</span>
+                      </div>
+                      <input type="range" id="param_restorative_pct" min="0.10" max="0.55" step="0.01" value="0.33"
+                             class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
+                      <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>10% (Poor)</span><span>30% (Standard)</span><span>55% (Elite)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- SUB-TAB 2: Autonomic & Stress (8 Features) -->
+                <div id="featSubRecovery" class="space-y-3 hidden">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="bg-[#171D2B]/90 hover:bg-[#1C2333] p-3 rounded-2xl border border-white/5 transition">
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-300 font-medium">Resting HR Z-Score</span>
+                        <span class="font-mono text-brand-emerald font-bold text-xs" id="val_hr_z">-0.50 &sigma;</span>
+                      </div>
+                      <input type="range" id="param_hr_z" min="-3.0" max="3.0" step="0.1" value="-0.5"
+                             class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
+                      <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>-3.0 (Calm)</span><span>0.0</span><span>+3.0 (Elevated)</span>
+                      </div>
+                    </div>
+
+                    <div class="bg-[#171D2B]/90 hover:bg-[#1C2333] p-3 rounded-2xl border border-white/5 transition">
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-300 font-medium">HRV RMSSD Z-Score</span>
+                        <span class="font-mono text-brand-emerald font-bold text-xs" id="val_hrv_z">+0.70 &sigma;</span>
+                      </div>
+                      <input type="range" id="param_hrv_z" min="-3.0" max="3.0" step="0.1" value="0.7"
+                             class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
+                      <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>-3.0 (Stressed)</span><span>0.0</span><span>+3.0 (Recovered)</span>
+                      </div>
+                    </div>
+
+                    <div class="bg-[#171D2B]/90 hover:bg-[#1C2333] p-3 rounded-2xl border border-white/5 transition">
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-300 font-medium">Physiological Stress Index</span>
+                        <span class="font-mono text-brand-emerald font-bold text-xs" id="val_stress_z">-0.60 &sigma;</span>
+                      </div>
+                      <input type="range" id="param_stress_z" min="-3.0" max="3.0" step="0.1" value="-0.6"
+                             class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
+                      <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>-3.0 (Low Stress)</span><span>0.0</span><span>+3.0 (High Stress)</span>
+                      </div>
+                    </div>
+
+                    <div class="bg-[#171D2B]/90 hover:bg-[#1C2333] p-3 rounded-2xl border border-white/5 transition">
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-300 font-medium">Autonomic Recovery Score</span>
+                        <span class="font-mono text-brand-emerald font-bold text-xs" id="val_recovery_sc">+0.85 &sigma;</span>
+                      </div>
+                      <input type="range" id="param_recovery_sc" min="-3.0" max="3.0" step="0.1" value="0.85"
+                             class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
+                      <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>-3.0 (Depleted)</span><span>0.0</span><span>+3.0 (Primed)</span>
+                      </div>
+                    </div>
+
+                    <div class="bg-[#171D2B]/90 hover:bg-[#1C2333] p-3 rounded-2xl border border-white/5 transition">
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-300 font-medium">Sleep to User Baseline Ratio</span>
+                        <span class="font-mono text-brand-emerald font-bold text-xs" id="val_sleep_ratio">1.05x</span>
+                      </div>
+                      <input type="range" id="param_sleep_ratio" min="0.5" max="1.5" step="0.05" value="1.05"
+                             class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
+                      <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>0.5x (Deficit)</span><span>1.0x (Normal)</span><span>1.5x (Surplus)</span>
+                      </div>
+                    </div>
+
+                    <div class="bg-[#171D2B]/90 hover:bg-[#1C2333] p-3 rounded-2xl border border-white/5 transition">
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-300 font-medium">HR to User Baseline Ratio</span>
+                        <span class="font-mono text-brand-emerald font-bold text-xs" id="val_hr_ratio">0.95x</span>
+                      </div>
+                      <input type="range" id="param_hr_ratio" min="0.7" max="1.4" step="0.02" value="0.95"
+                             class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
+                      <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>0.7x (Calm)</span><span>1.0x</span><span>1.4x (Tachycardia)</span>
+                      </div>
+                    </div>
+
+                    <div class="bg-[#171D2B]/90 hover:bg-[#1C2333] p-3 rounded-2xl border border-white/5 transition">
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-300 font-medium">HRV to Baseline Ratio</span>
+                        <span class="font-mono text-brand-emerald font-bold text-xs" id="val_hrv_ratio">1.12x</span>
+                      </div>
+                      <input type="range" id="param_hrv_ratio" min="0.5" max="1.8" step="0.05" value="1.12"
+                             class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
+                      <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>0.5x</span><span>1.0x</span><span>1.8x</span>
+                      </div>
+                    </div>
+
+                    <div class="bg-[#171D2B]/90 hover:bg-[#1C2333] p-3 rounded-2xl border border-white/5 transition">
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-300 font-medium">Deep Sleep to Baseline Ratio</span>
+                        <span class="font-mono text-brand-emerald font-bold text-xs" id="val_deep_ratio">1.08x</span>
+                      </div>
+                      <input type="range" id="param_deep_ratio" min="0.4" max="2.0" step="0.05" value="1.08"
+                             class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
+                      <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>0.4x</span><span>1.0x</span><span>2.0x</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- SUB-TAB 3: Alcohol & History (7 Features) -->
+                <div id="featSubAlcohol" class="space-y-3 hidden">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="bg-[#171D2B]/90 hover:bg-[#1C2333] p-3 rounded-2xl border border-white/5 transition">
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-300 font-medium">Alcohol Units</span>
+                        <span class="font-mono text-brand-coral font-bold text-xs" id="val_alcohol">0.0 units</span>
+                      </div>
+                      <input type="range" id="param_alcohol" min="0" max="6" step="0.5" value="0.0"
+                             class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
+                      <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>0.0 (None)</span><span>2.0</span><span>6.0 (Heavy)</span>
+                      </div>
+                    </div>
+
+                    <div class="bg-[#171D2B]/90 hover:bg-[#1C2333] p-3 rounded-2xl border border-white/5 transition">
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-300 font-medium">Alcohol Tier (0: None, 1: Mild, 2: Heavy)</span>
+                        <span class="font-mono text-brand-coral font-bold text-xs" id="val_alcohol_level">0</span>
+                      </div>
+                      <input type="range" id="param_alcohol_level" min="0" max="2" step="1" value="0"
+                             class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
+                      <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>0 (None)</span><span>1 (Moderate)</span><span>2 (Heavy)</span>
+                      </div>
+                    </div>
+
+                    <div class="bg-[#171D2B]/90 hover:bg-[#1C2333] p-3 rounded-2xl border border-white/5 transition sm:col-span-2">
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-300 font-medium">Alcohol &times; HRV Interaction</span>
+                        <span class="font-mono text-brand-coral font-bold text-xs" id="val_alcohol_x_hrv">0.00</span>
+                      </div>
+                      <input type="range" id="param_alcohol_x_hrv" min="-6.0" max="6.0" step="0.1" value="0.0"
+                             class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
+                      <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>-6.0 (Alcohol + Low HRV)</span><span>0.0</span><span>+6.0</span>
+                      </div>
+                    </div>
+
+                    <div class="bg-[#171D2B]/90 hover:bg-[#1C2333] p-3 rounded-2xl border border-white/5 transition">
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-300 font-medium">Rolling 5-Day Feeling Mean</span>
+                        <span class="font-mono text-brand-amber font-bold text-xs" id="val_roll5">3.5 / 5</span>
+                      </div>
+                      <input type="range" id="param_roll5" min="1.0" max="5.0" step="0.1" value="3.5"
+                             class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
+                      <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>1.0</span><span>3.0</span><span>5.0</span>
+                      </div>
+                    </div>
+
+                    <div class="bg-[#171D2B]/90 hover:bg-[#1C2333] p-3 rounded-2xl border border-white/5 transition">
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-300 font-medium">7-Day Exponentially Weighted Feeling</span>
+                        <span class="font-mono text-brand-amber font-bold text-xs" id="val_ewm7">3.5 / 5</span>
+                      </div>
+                      <input type="range" id="param_ewm7" min="1.0" max="5.0" step="0.1" value="3.5"
+                             class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
+                      <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>1.0</span><span>3.0</span><span>5.0</span>
+                      </div>
+                    </div>
+
+                    <div class="bg-[#171D2B]/90 hover:bg-[#1C2333] p-3 rounded-2xl border border-white/5 transition sm:col-span-2">
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-300 font-medium">Expanding Historical Mean Feeling</span>
+                        <span class="font-mono text-brand-amber font-bold text-xs" id="val_exp_mean">3.5 / 5</span>
+                      </div>
+                      <input type="range" id="param_exp_mean" min="1.0" max="5.0" step="0.1" value="3.5"
+                             class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
+                      <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                        <span>1.0</span><span>3.0</span><span>5.0</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Bottom Navigation Bar for Page 1 -->
+      <div class="mt-4 flex flex-col sm:flex-row justify-between items-center bg-[#101522] border border-white/10 rounded-2xl p-3 px-5 gap-3">
+        <div class="flex items-center space-x-2 text-xs text-gray-400">
+          <span class="w-2 h-2 rounded-full bg-brand-emerald animate-pulse"></span>
+          <span class="font-medium">Page 1 of 2: Ring Dial Simulator &amp; 21 Control Features Active</span>
+        </div>
+        <button onclick="switchMainPage(2)" class="px-5 py-2 rounded-xl bg-brand-card hover:bg-white/10 border border-white/15 text-white font-bold text-xs flex items-center space-x-2 transition shadow-lg hover:border-brand-emerald/40 cursor-pointer">
+          <span>Explore Sleep Architecture &amp; TreeSHAP (Page 2)</span>
+          <span class="text-brand-emerald">&rarr;</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- PAGE 2: SLEEP ARCHITECTURE & TREESHAP EXPLAINABILITY (PAGE 2)       -->
+    <!-- =================================================================== -->
+    <div id="page2Container" class="hidden space-y-4">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        
+        <!-- LEFT: Sleep Architecture & Autonomic Biomarkers (col-span-5) -->
+        <div class="lg:col-span-5 flex flex-col space-y-4">
+          <!-- Sleep Architecture Summary Card -->
+          <div class="bg-brand-card rounded-3xl border border-brand-cardBorder p-5 sm:p-6 shadow-xl flex flex-col justify-between space-y-4">
+            <div class="flex items-center justify-between border-b border-brand-cardBorder pb-3">
+              <span class="text-xs font-bold uppercase tracking-wider text-white flex items-center space-x-2">
+                <span>🌙</span> <span>Sleep Architecture</span>
+              </span>
+              <span class="text-xs font-bold text-brand-emerald mono" id="totalSleepDurationText">7h 35m</span>
+            </div>
+
+            <!-- Segmented Stage Progress Bar -->
+            <div>
+              <div class="w-full h-3.5 rounded-full bg-[#0D111A] flex overflow-hidden border border-white/5">
                 <div id="barDeep" class="h-full bg-brand-purple transition-all duration-300" style="width: 22%;" title="Deep Sleep"></div>
                 <div id="barRem" class="h-full bg-brand-teal transition-all duration-300" style="width: 25%;" title="REM Sleep"></div>
                 <div id="barLight" class="h-full bg-brand-blue transition-all duration-300" style="width: 45%;" title="Light Sleep"></div>
                 <div id="barAwake" class="h-full bg-gray-600 transition-all duration-300" style="width: 8%;" title="Awake Time"></div>
               </div>
-
-              <div class="flex justify-between text-[10px] text-brand-slateText mt-2 mono">
-                <span class="flex items-center space-x-1">
-                  <span class="h-1.5 w-1.5 rounded-full bg-brand-purple"></span>
-                  <span>Deep+REM: <strong class="text-gray-200" id="restorativeTimeText">150m</strong></span>
-                </span>
-                <span class="flex items-center space-x-1">
-                  <span class="h-1.5 w-1.5 rounded-full bg-brand-teal"></span>
-                  <span>Debt: <strong class="text-brand-emerald" id="sleepDebtText">+15m</strong></span>
-                </span>
+              <div class="grid grid-cols-4 gap-2 text-center mt-2.5 text-[11px] mono">
+                <div class="bg-[#151A27] p-1.5 rounded-lg border border-white/5">
+                  <span class="text-brand-purple font-bold">Deep</span>
+                </div>
+                <div class="bg-[#151A27] p-1.5 rounded-lg border border-white/5">
+                  <span class="text-brand-teal font-bold">REM</span>
+                </div>
+                <div class="bg-[#151A27] p-1.5 rounded-lg border border-white/5">
+                  <span class="text-brand-blue font-bold">Light</span>
+                </div>
+                <div class="bg-[#151A27] p-1.5 rounded-lg border border-white/5">
+                  <span class="text-gray-400 font-bold">Awake</span>
+                </div>
               </div>
             </div>
 
-            <!-- Autonomic Biomarker Grid -->
-            <div class="grid grid-cols-2 gap-2.5">
+            <div class="flex justify-between text-xs text-brand-slateText pt-2 border-t border-white/5 mono">
+              <span class="flex items-center space-x-1.5">
+                <span class="h-2 w-2 rounded-full bg-brand-purple"></span>
+                <span>Deep+REM: <strong class="text-gray-200 font-bold" id="restorativeTimeText">150m</strong></span>
+              </span>
+              <span class="flex items-center space-x-1.5">
+                <span class="h-2 w-2 rounded-full bg-brand-teal"></span>
+                <span>Debt: <strong class="text-brand-emerald font-bold" id="sleepDebtText">+15m</strong></span>
+              </span>
+            </div>
+          </div>
+
+          <!-- Autonomic Biomarker Grid -->
+          <div class="bg-brand-card rounded-3xl border border-brand-cardBorder p-5 sm:p-6 shadow-xl flex-1 flex flex-col justify-between space-y-3">
+            <div class="flex items-center justify-between border-b border-brand-cardBorder pb-2">
+              <span class="text-xs font-bold uppercase tracking-wider text-brand-teal flex items-center space-x-1.5">
+                <span>💓</span> <span>Autonomic Biomarkers</span>
+              </span>
+              <span class="text-[11px] font-mono text-gray-400">Ring PPG Sensors</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 flex-1">
               <div class="bg-[#161D2B] border border-white/5 rounded-2xl p-3 flex flex-col justify-between">
                 <div class="text-[10px] uppercase tracking-wider font-semibold text-brand-slateText">Resting HR</div>
                 <div class="flex items-baseline space-x-1 my-1">
-                  <span class="text-xl font-black text-white mono" id="rhrValue">56</span>
-                  <span class="text-[10px] text-gray-400">BPM</span>
+                  <span class="text-2xl font-black text-white mono" id="rhrValue">56</span>
+                  <span class="text-xs text-gray-400">BPM</span>
                 </div>
-                <div class="text-[11px] font-medium text-brand-emerald" id="rhrStatus">Optimal (-0.6&sigma;)</div>
+                <div class="text-xs font-semibold text-brand-emerald" id="rhrStatus">Optimal (-0.6&sigma;)</div>
               </div>
 
               <div class="bg-[#161D2B] border border-white/5 rounded-2xl p-3 flex flex-col justify-between">
                 <div class="text-[10px] uppercase tracking-wider font-semibold text-brand-slateText">HRV (RMSSD)</div>
                 <div class="flex items-baseline space-x-1 my-1">
-                  <span class="text-xl font-black text-white mono" id="hrvValue">65</span>
-                  <span class="text-[10px] text-gray-400">ms</span>
+                  <span class="text-2xl font-black text-white mono" id="hrvValue">65</span>
+                  <span class="text-xs text-gray-400">ms</span>
                 </div>
-                <div class="text-[11px] font-medium text-brand-emerald" id="hrvStatus">Elevated (+1.2&sigma;)</div>
+                <div class="text-xs font-semibold text-brand-emerald" id="hrvStatus">Elevated (+1.2&sigma;)</div>
               </div>
 
               <div class="bg-[#161D2B] border border-white/5 rounded-2xl p-3 flex flex-col justify-between">
                 <div class="text-[10px] uppercase tracking-wider font-semibold text-brand-slateText">Temperature Dev</div>
                 <div class="flex items-baseline space-x-1 my-1">
-                  <span class="text-xl font-black text-white mono" id="skinTempValue">-0.2</span>
-                  <span class="text-[10px] text-gray-400">&deg;C</span>
+                  <span class="text-2xl font-black text-white mono" id="skinTempValue">-0.2</span>
+                  <span class="text-xs text-gray-400">&deg;C</span>
                 </div>
-                <div class="text-[11px] text-brand-emerald font-medium" id="skinTempStatus">Optimal (Baseline)</div>
+                <div class="text-xs text-brand-emerald font-semibold" id="skinTempStatus">Optimal (Baseline)</div>
               </div>
 
               <div class="bg-[#161D2B] border border-white/5 rounded-2xl p-3 flex flex-col justify-between">
                 <div class="text-[10px] uppercase tracking-wider font-semibold text-brand-slateText">Sleep Efficiency</div>
                 <div class="flex items-baseline space-x-1 my-1">
-                  <span class="text-xl font-black text-white mono" id="sleepEfficiencyValue">91%</span>
-                  <span class="text-[10px] text-gray-400">5 Cycles</span>
+                  <span class="text-2xl font-black text-white mono" id="sleepEfficiencyValue">91%</span>
+                  <span class="text-xs text-gray-400">5 Cycles</span>
                 </div>
-                <div class="text-[11px] text-brand-emerald font-medium" id="sleepEfficiencyStatus">High Consistency</div>
+                <div class="text-xs text-brand-emerald font-semibold" id="sleepEfficiencyStatus">High Consistency</div>
               </div>
             </div>
           </div>
-
         </div>
-      </div>
 
-      <!-- RIGHT: Tab-Driven Interactive Control Deck (col-span-7) -->
-      <div class="lg:col-span-7 flex flex-col">
-        <div class="bg-brand-card rounded-3xl border border-brand-cardBorder p-6 shadow-xl flex-1 flex flex-col justify-start space-y-3.5">
-          
-          <!-- Tab Navigation Header -->
-          <div class="border-b border-brand-cardBorder pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <div class="flex items-center space-x-2 bg-[#0A0D15] p-1.5 rounded-2xl border border-white/10 shadow-inner">
-                <button id="tabBtnRaw" onclick="switchTab('raw')" class="px-5 py-2 text-xs font-bold rounded-xl transition text-gray-300 hover:text-white flex items-center space-x-2 tracking-wide">
-                  <span>🔬</span> <span>Raw Telemetry</span>
-                </button>
-                <button id="tabBtnFeatures" onclick="switchTab('features')" class="tab-active px-5 py-2 text-xs font-bold rounded-xl transition text-gray-300 hover:text-white flex items-center space-x-2 tracking-wide">
-                  <span>⚙️</span> <span>Engineered Features (21)</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Sync Indicator, Cold Start Toggle & Quick Reset -->
-            <div class="flex items-center space-x-2 text-xs">
-              <span id="uiColdStartStatus" class="flex items-center space-x-1 px-2 py-0.5 rounded-lg bg-brand-emerald/10 text-brand-emerald border border-brand-emerald/20 font-mono text-[11px]">
-                <span id="uiColdStartDot" class="inline-block w-1.5 h-1.5 rounded-full bg-brand-emerald"></span>
-                <span id="uiColdStartText">Baseline Active</span>
-              </span>
-              <button onclick="applyPreset('cold_start')" id="btnColdStart" class="px-2.5 py-1 rounded-lg border border-brand-amber/30 bg-brand-amber/10 hover:bg-brand-amber/20 text-brand-amber font-semibold flex items-center space-x-1 transition text-xs" title="Simulate Day-1 Onboarding without personal baselines">
-                <span>❄️</span> <span>Day 1 Test</span>
-              </button>
-              <button onclick="applyPreset('baseline')" class="px-2.5 py-1 rounded-lg border border-brand-emerald/30 bg-brand-emerald/10 hover:bg-brand-emerald/20 text-brand-emerald font-semibold flex items-center space-x-1 transition text-xs">
-                <span>↺</span> <span>Reset</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- ========================================================= -->
-          <!-- TAB VIEWPORT CONTAINER (Constant 1-Page Layout)           -->
-          <!-- ========================================================= -->
-          <div class="flex-1 flex flex-col min-h-0">
-
-            <!-- ========================================================= -->
-            <!-- TAB 1: RAW INPUTS CONTROLS                                -->
-            <!-- ========================================================= -->
-            <div id="viewRaw" class="hidden space-y-3 overflow-y-auto max-h-[380px] pr-1">
-              <div class="bg-[#151B27] p-2.5 rounded-xl border border-white/5 text-xs text-brand-slateText flex items-center justify-between">
-                <span>Adjust raw sensor readings &amp; lifestyle habits; all 21 features update live.</span>
-                <span class="mono text-[11px] text-brand-emerald font-semibold">Formula: z = (x - &mu;) / &sigma;</span>
-              </div>
-
-              <!-- Sleep Duration & Stage Minutes -->
-              <div class="space-y-2">
-                <h4 class="text-xs font-bold uppercase tracking-wider text-brand-blue flex items-center space-x-1.5">
-                  <span>🌙</span> <span>Overnight Sleep Session (Raw Minutes)</span>
-                </h4>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5">
-                    <div class="flex justify-between text-xs mb-1">
-                      <span class="text-gray-300 font-medium">Total Sleep Time</span>
-                      <span class="font-mono text-brand-emerald font-bold text-xs" id="raw_val_sleep">450 min (7.5h)</span>
-                    </div>
-                    <input type="range" id="raw_sleep" min="240" max="600" step="5" value="450"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onRawChange()">
-                    <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                      <span>240m</span>
-                      <span>420m (7h)</span>
-                      <span>600m</span>
-                    </div>
-                  </div>
-
-                  <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5">
-                    <div class="flex justify-between text-xs mb-1">
-                      <span class="text-gray-300 font-medium">Deep Sleep</span>
-                      <span class="font-mono text-brand-purple font-bold text-xs" id="raw_val_deep">70 min</span>
-                    </div>
-                    <input type="range" id="raw_deep" min="10" max="150" step="5" value="70"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onRawChange()">
-                    <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                      <span>10m</span>
-                      <span>70m (Normal)</span>
-                      <span>150m</span>
-                    </div>
-                  </div>
-
-                  <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5">
-                    <div class="flex justify-between text-xs mb-1">
-                      <span class="text-gray-300 font-medium">REM Sleep</span>
-                      <span class="font-mono text-brand-teal font-bold text-xs" id="raw_val_rem">75 min</span>
-                    </div>
-                    <input type="range" id="raw_rem" min="10" max="160" step="5" value="75"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onRawChange()">
-                    <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                      <span>10m</span>
-                      <span>75m (Normal)</span>
-                      <span>160m</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Physiological Sensors (BPM & MS) -->
-              <div class="space-y-2">
-                <h4 class="text-xs font-bold uppercase tracking-wider text-brand-teal flex items-center space-x-1.5">
-                  <span>💓</span> <span>Ring PPG Sensors (Heart &amp; Autonomic)</span>
-                </h4>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5">
-                    <div class="flex justify-between text-xs mb-1">
-                      <span class="text-gray-300 font-medium">Resting Heart Rate (BPM)</span>
-                      <span class="font-mono text-brand-emerald font-bold text-xs" id="raw_val_hr">57 BPM</span>
-                    </div>
-                    <input type="range" id="raw_hr" min="40" max="95" step="1" value="57"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onRawChange()">
-                    <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                      <span>40 BPM (Low)</span>
-                      <span>60 BPM (Mean)</span>
-                      <span>95 BPM</span>
-                    </div>
-                  </div>
-
-                  <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5">
-                    <div class="flex justify-between text-xs mb-1">
-                      <span class="text-gray-300 font-medium">HRV RMSSD (ms)</span>
-                      <span class="font-mono text-brand-emerald font-bold text-xs" id="raw_val_hrv">62 ms</span>
-                    </div>
-                    <input type="range" id="raw_hrv" min="15" max="110" step="1" value="62"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onRawChange()">
-                    <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                      <span>15 ms (Low)</span>
-                      <span>48 ms (Mean)</span>
-                      <span>110 ms</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Alcohol & Lifestyle -->
-              <div class="space-y-2">
-                <h4 class="text-xs font-bold uppercase tracking-wider text-brand-coral flex items-center space-x-1.5">
-                  <span>🍷</span> <span>Pre-Sleep Alcohol &amp; Lifestyle</span>
-                </h4>
-                <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5">
-                  <div class="flex justify-between items-center mb-1">
-                    <span class="text-xs text-gray-300 font-medium">Alcohol Units (Yesterday Evening)</span>
-                    <span class="font-mono font-bold text-xs px-2 py-0.5 rounded bg-brand-card" id="raw_val_alcohol">0.0 units (None)</span>
-                  </div>
-                  <input type="range" id="raw_alcohol" min="0.0" max="8.0" step="0.5" value="0.0"
-                         class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onRawChange()">
-                  <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                    <span>0 units</span>
-                    <span>2 units (Light)</span>
-                    <span>4 units (Moderate)</span>
-                    <span>8+ units</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Subjective Historical Feeling Baseline -->
-              <div class="space-y-2">
-                <h4 class="text-xs font-bold uppercase tracking-wider text-brand-amber flex items-center space-x-1.5">
-                  <span>🧠</span> <span>Psychological Momentum &amp; Past Feeling Baseline</span>
-                </h4>
-                <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5">
-                  <div class="flex justify-between text-xs mb-1">
-                    <span class="text-gray-300 font-medium">Recent Baseline Feeling (Rolling &amp; EWM Anchor)</span>
-                    <span class="font-mono text-brand-amber font-bold text-xs" id="raw_val_feeling">3.5 / 5</span>
-                  </div>
-                  <input type="range" id="raw_feeling" min="1.0" max="5.0" step="0.1" value="3.5"
-                         class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onRawChange()">
-                  <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                    <span>1.0 (Exhausted)</span>
-                    <span>3.0 (Steady)</span>
-                    <span>5.0 (Optimal)</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- ========================================================= -->
-            <!-- TAB 2: ENGINEERED FEATURES (Organized in 3 Sub-Tabs)      -->
-            <!-- ========================================================= -->
-            <div id="viewFeatures" class="space-y-3 overflow-y-auto max-h-[380px] pr-1">
-              
-              <!-- Sub-Tab Category Pill Selector (Spacious Full-Width Grid) -->
-              <div class="grid grid-cols-3 gap-2 bg-[#0D111A] p-1.5 rounded-2xl border border-white/10 shadow-inner">
-                <button id="subTabBtnSleep" onclick="switchFeatureSubTab('sleep')" class="subtab-active py-2 px-3 text-xs font-bold rounded-xl transition text-center flex items-center justify-center space-x-1.5 shadow-sm">
-                  <span>🌙</span> <span>Sleep &amp; Restorative (6)</span>
-                </button>
-                <button id="subTabBtnRecovery" onclick="switchFeatureSubTab('recovery')" class="py-2 px-3 text-xs font-semibold rounded-xl transition text-gray-400 hover:text-white text-center flex items-center justify-center space-x-1.5">
-                  <span>💓</span> <span>Autonomic &amp; Stress (8)</span>
-                </button>
-                <button id="subTabBtnAlcohol" onclick="switchFeatureSubTab('alcohol')" class="py-2 px-3 text-xs font-semibold rounded-xl transition text-gray-400 hover:text-white text-center flex items-center justify-center space-x-1.5">
-                  <span>🍷</span> <span>Alcohol &amp; History (7)</span>
-                </button>
-              </div>
-
-              <!-- SUB-TAB 1: Sleep & Restorative (6 Features) -->
-              <div id="featSubSleep" class="space-y-2.5">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5">
-                    <div class="flex justify-between text-xs mb-1">
-                      <span class="text-gray-300 font-medium">Sleep Duration Z-Score</span>
-                      <span class="font-mono text-brand-emerald font-bold text-xs" id="val_sleep_z">+0.80 &sigma;</span>
-                    </div>
-                    <input type="range" id="param_sleep_z" min="-3.0" max="3.0" step="0.1" value="0.8"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
-                    <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                      <span>-3.0 (Short)</span><span>0.0</span><span>+3.0 (Long)</span>
-                    </div>
-                  </div>
-
-                  <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5">
-                    <div class="flex justify-between text-xs mb-1">
-                      <span class="text-gray-300 font-medium">Sleep Deficit / Surplus</span>
-                      <span class="font-mono text-brand-emerald font-bold text-xs" id="val_sleep_debt">+20 min</span>
-                    </div>
-                    <input type="range" id="param_sleep_debt" min="-120" max="120" step="5" value="20"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
-                    <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                      <span>-120m</span><span>0m</span><span>+120m</span>
-                    </div>
-                  </div>
-
-                  <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5 sm:col-span-2">
-                    <div class="flex justify-between text-xs mb-1">
-                      <span class="text-gray-300 font-medium">Restorative Sleep (Deep + REM Minutes)</span>
-                      <span class="font-mono text-brand-purple font-bold text-xs" id="val_deep_rem">145 min</span>
-                    </div>
-                    <input type="range" id="param_deep_rem" min="30" max="240" step="5" value="145"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
-                    <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                      <span>30m</span><span>120m (Mean)</span><span>240m</span>
-                    </div>
-                  </div>
-
-                  <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5">
-                    <div class="flex justify-between text-xs mb-1">
-                      <span class="text-gray-300 font-medium">Deep Sleep Z-Score</span>
-                      <span class="font-mono text-brand-purple font-bold text-xs" id="val_deep_z">+0.00 &sigma;</span>
-                    </div>
-                    <input type="range" id="param_deep_z" min="-3.0" max="3.0" step="0.1" value="0.0"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
-                    <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                      <span>-3.0</span><span>0.0</span><span>+3.0</span>
-                    </div>
-                  </div>
-
-                  <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5">
-                    <div class="flex justify-between text-xs mb-1">
-                      <span class="text-gray-300 font-medium">REM Sleep Z-Score</span>
-                      <span class="font-mono text-brand-teal font-bold text-xs" id="val_rem_z">+0.00 &sigma;</span>
-                    </div>
-                    <input type="range" id="param_rem_z" min="-3.0" max="3.0" step="0.1" value="0.0"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
-                    <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                      <span>-3.0</span><span>0.0</span><span>+3.0</span>
-                    </div>
-                  </div>
-
-                  <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5 sm:col-span-2">
-                    <div class="flex justify-between text-xs mb-1">
-                      <span class="text-gray-300 font-medium">Restorative Sleep Ratio (%)</span>
-                      <span class="font-mono text-brand-teal font-bold text-xs" id="val_restorative_pct">34%</span>
-                    </div>
-                    <input type="range" id="param_restorative_pct" min="0.10" max="0.60" step="0.01" value="0.34"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
-                    <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                      <span>10% (Low)</span><span>35% (Healthy)</span><span>60%</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- SUB-TAB 2: Autonomic & Stress (8 Features) -->
-              <div id="featSubRecovery" class="space-y-2.5 hidden">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5">
-                    <div class="flex justify-between text-xs mb-1">
-                      <span class="text-gray-300 font-medium">Resting HR Z-Score</span>
-                      <span class="font-mono text-brand-emerald font-bold text-xs" id="val_hr_z">-0.50 &sigma;</span>
-                    </div>
-                    <input type="range" id="param_hr_z" min="-3.0" max="3.0" step="0.1" value="-0.5"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
-                    <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                      <span>-3.0 (Calm)</span><span>0.0</span><span>+3.0</span>
-                    </div>
-                  </div>
-
-                  <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5">
-                    <div class="flex justify-between text-xs mb-1">
-                      <span class="text-gray-300 font-medium">HRV RMSSD Z-Score</span>
-                      <span class="font-mono text-brand-emerald font-bold text-xs" id="val_hrv_z">+1.10 &sigma;</span>
-                    </div>
-                    <input type="range" id="param_hrv_z" min="-3.0" max="3.0" step="0.1" value="1.1"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
-                    <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                      <span>-3.0 (Tense)</span><span>0.0</span><span>+3.0 (High)</span>
-                    </div>
-                  </div>
-
-                  <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5">
-                    <div class="flex justify-between text-xs mb-1">
-                      <span class="text-gray-300 font-medium">Physiological Stress Index</span>
-                      <span class="font-mono text-brand-coral font-bold text-xs" id="val_stress_z">-1.60</span>
-                    </div>
-                    <input type="range" id="param_stress_z" min="-4.0" max="4.0" step="0.1" value="-1.6"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
-                    <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                      <span>-4.0 (Relaxed)</span><span>0.0</span><span>+4.0 (Stress)</span>
-                    </div>
-                  </div>
-
-                  <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5">
-                    <div class="flex justify-between text-xs mb-1">
-                      <span class="text-gray-300 font-medium">Autonomic Recovery Score</span>
-                      <span class="font-mono text-brand-emerald font-bold text-xs" id="val_recovery_sc">+1.60</span>
-                    </div>
-                    <input type="range" id="param_recovery_sc" min="-4.0" max="4.0" step="0.1" value="1.6"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
-                    <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                      <span>-4.0</span><span>0.0</span><span>+4.0 (Prime)</span>
-                    </div>
-                  </div>
-
-                  <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5">
-                    <div class="flex justify-between text-xs mb-1">
-                      <span class="text-gray-300 font-medium">Sleep vs Baseline Ratio</span>
-                      <span class="font-mono text-brand-blue font-bold text-xs" id="val_sleep_ratio">1.05x</span>
-                    </div>
-                    <input type="range" id="param_sleep_ratio" min="0.5" max="1.5" step="0.05" value="1.05"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
-                    <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                      <span>0.5x</span><span>1.0x</span><span>1.5x</span>
-                    </div>
-                  </div>
-
-                  <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5">
-                    <div class="flex justify-between text-xs mb-1">
-                      <span class="text-gray-300 font-medium">Deep vs Baseline Ratio</span>
-                      <span class="font-mono text-brand-purple font-bold text-xs" id="val_deep_ratio">1.00x</span>
-                    </div>
-                    <input type="range" id="param_deep_ratio" min="0.3" max="2.0" step="0.05" value="1.0"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
-                    <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                      <span>0.3x</span><span>1.0x</span><span>2.0x</span>
-                    </div>
-                  </div>
-
-                  <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5">
-                    <div class="flex justify-between text-xs mb-1">
-                      <span class="text-gray-300 font-medium">HR vs Baseline Ratio</span>
-                      <span class="font-mono text-brand-emerald font-bold text-xs" id="val_hr_ratio">0.95x</span>
-                    </div>
-                    <input type="range" id="param_hr_ratio" min="0.7" max="1.4" step="0.02" value="0.95"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
-                    <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                      <span>0.7x (Low)</span><span>1.0x</span><span>1.4x</span>
-                    </div>
-                  </div>
-
-                  <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5">
-                    <div class="flex justify-between text-xs mb-1">
-                      <span class="text-gray-300 font-medium">HRV vs Baseline Ratio</span>
-                      <span class="font-mono text-brand-emerald font-bold text-xs" id="val_hrv_ratio">1.35x</span>
-                    </div>
-                    <input type="range" id="param_hrv_ratio" min="0.4" max="2.0" step="0.05" value="1.35"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
-                    <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                      <span>0.4x</span><span>1.0x</span><span>2.0x</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- SUB-TAB 3: Alcohol & History (7 Features) -->
-              <div id="featSubAlcohol" class="space-y-2.5 hidden">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5 sm:col-span-2">
-                    <div class="flex justify-between items-center mb-1">
-                      <span class="text-xs text-gray-300 font-medium">Alcohol Intake (Units)</span>
-                      <span class="font-mono font-bold text-xs px-2 py-0.5 rounded bg-brand-card" id="val_alcohol">0.0 units (None)</span>
-                    </div>
-                    <input type="range" id="param_alcohol" min="0.0" max="8.0" step="0.5" value="0.0"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
-                    <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                      <span>0 units</span><span>2 units</span><span>4 units</span><span>8+ units</span>
-                    </div>
-                  </div>
-
-                  <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5">
-                    <div class="flex justify-between text-xs mb-1">
-                      <span class="text-gray-300 font-medium">Alcohol Level (Tier)</span>
-                      <span class="font-mono text-gray-200 font-bold text-xs" id="val_alcohol_level">0 (None)</span>
-                    </div>
-                    <input type="range" id="param_alcohol_level" min="0" max="2" step="1" value="0"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
-                    <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                      <span>0: None</span><span>1: Light (&le;2)</span><span>2: Heavy (&gt;2)</span>
-                    </div>
-                  </div>
-
-                  <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5">
-                    <div class="flex justify-between text-xs mb-1">
-                      <span class="text-gray-300 font-medium">Alcohol &times; HRV Interaction</span>
-                      <span class="font-mono text-gray-200 font-bold text-xs" id="val_alcohol_x_hrv">0.00</span>
-                    </div>
-                    <input type="range" id="param_alcohol_x_hrv" min="-15.0" max="15.0" step="0.5" value="0.0"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
-                    <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                      <span>-15.0</span><span>0.0</span><span>+15.0</span>
-                    </div>
-                  </div>
-
-                  <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5">
-                    <div class="flex justify-between text-xs mb-1">
-                      <span class="text-gray-300 font-medium">5-Day Rolling Feeling</span>
-                      <span class="font-mono text-brand-amber font-bold text-xs" id="val_roll5">3.5 / 5</span>
-                    </div>
-                    <input type="range" id="param_roll5" min="1.0" max="5.0" step="0.1" value="3.5"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
-                    <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                      <span>1.0</span><span>3.0</span><span>5.0</span>
-                    </div>
-                  </div>
-
-                  <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5">
-                    <div class="flex justify-between text-xs mb-1">
-                      <span class="text-gray-300 font-medium">7-Day EWM Feeling</span>
-                      <span class="font-mono text-brand-amber font-bold text-xs" id="val_ewm7">3.5 / 5</span>
-                    </div>
-                    <input type="range" id="param_ewm7" min="1.0" max="5.0" step="0.1" value="3.5"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
-                    <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                      <span>1.0</span><span>3.0</span><span>5.0</span>
-                    </div>
-                  </div>
-
-                  <div class="bg-[#171D2B] p-2.5 rounded-xl border border-white/5 sm:col-span-2">
-                    <div class="flex justify-between text-xs mb-1">
-                      <span class="text-gray-300 font-medium">Expanding Historical Mean Feeling</span>
-                      <span class="font-mono text-brand-amber font-bold text-xs" id="val_exp_mean">3.5 / 5</span>
-                    </div>
-                    <input type="range" id="param_exp_mean" min="1.0" max="5.0" step="0.1" value="3.5"
-                           class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer" oninput="onParamChange()">
-                    <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                      <span>1.0</span><span>3.0</span><span>5.0</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-
-          </div>
-
-          <!-- ========================================================= -->
-          <!-- PERSISTENT SHAP VALUES & WATERFALL EXPLAINABILITY         -->
-          <!-- (Fills the vacant space below the input sliders)         -->
-          <!-- ========================================================= -->
-          <div id="shapSection" class="border-t border-brand-cardBorder pt-3 flex-1 flex flex-col justify-start space-y-2.5 min-h-0">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between bg-[#151A27] p-2 sm:p-2.5 rounded-xl border border-white/5 gap-2">
-              <div class="flex items-center space-x-2">
-                <span class="text-xs font-bold uppercase tracking-wider text-brand-blue flex items-center space-x-1">
-                  <span>⚡</span> <span>TreeSHAP Drivers</span>
+        <!-- RIGHT: TreeSHAP Explainability (col-span-7) -->
+        <div class="lg:col-span-7 flex flex-col">
+          <div class="bg-brand-card rounded-3xl border border-brand-cardBorder p-6 shadow-xl flex-1 flex flex-col justify-start space-y-4">
+            
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between bg-[#151A27] p-3 rounded-2xl border border-white/5 gap-3">
+              <div class="flex items-center space-x-2.5">
+                <span class="text-xs font-bold uppercase tracking-wider text-brand-blue flex items-center space-x-1.5">
+                  <span>⚡</span> <span>TreeSHAP Feature Drivers</span>
                 </span>
-                <span class="text-[10px] text-brand-slateText font-mono hidden md:inline">Base: <span id="baseValueText" class="text-gray-300 font-bold">3.2805</span></span>
+                <span class="text-xs text-brand-slateText font-mono hidden md:inline">Base Value: <strong id="baseValueText" class="text-gray-200">3.2805</strong></span>
               </div>
 
               <!-- Filters: Top 10 Drivers, Last 10 Drivers, All 21 Features -->
               <div class="flex items-center space-x-1.5 bg-[#0D111A] p-1 rounded-xl border border-white/10">
-                <button id="shapFilterTop10" onclick="setShapFilter('top10')" class="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-brand-emerald/20 text-brand-emerald border border-brand-emerald/40 shadow-sm transition">
+                <button id="shapFilterTop10" onclick="setShapFilter('top10')" class="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-brand-emerald/20 text-brand-emerald border border-brand-emerald/40 shadow-sm transition cursor-pointer">
                   Top 10 Drivers
                 </button>
-                <button id="shapFilterLast10" onclick="setShapFilter('last10')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-gray-400 hover:text-white transition">
+                <button id="shapFilterLast10" onclick="setShapFilter('last10')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-gray-400 hover:text-white transition cursor-pointer">
                   Last 10 Drivers
                 </button>
-                <button id="shapFilterAll" onclick="setShapFilter('all')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-gray-400 hover:text-white transition">
+                <button id="shapFilterAll" onclick="setShapFilter('all')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-gray-400 hover:text-white transition cursor-pointer">
                   All 21 Features
                 </button>
               </div>
 
               <div class="text-right flex items-center space-x-2 justify-end">
-                <span class="text-[10px] uppercase text-brand-slateText font-semibold">Net SHAP:</span>
-                <span class="text-xs sm:text-sm font-bold mono text-brand-emerald" id="shapTotalSum">+0.906</span>
+                <span class="text-xs uppercase text-brand-slateText font-semibold">Net TreeSHAP:</span>
+                <span class="text-sm font-bold mono text-brand-emerald" id="shapTotalSum">+0.906</span>
               </div>
             </div>
 
-            <!-- Dynamic 2-Column SHAP Waterfall in 2-Column Responsive Grid -->
-            <div id="shapBarsContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-2 overflow-y-auto max-h-[265px] pr-1">
+            <!-- Dynamic 2-Column SHAP Waterfall in 2-Column Responsive Grid with full comfortable height -->
+            <div id="shapBarsContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 overflow-y-auto max-h-[460px] pr-1">
               <!-- Rendered dynamically via JavaScript -->
             </div>
 
-            <!-- Legend -->
-            <div class="flex items-center justify-between text-[11px] text-brand-slateText pt-1.5 border-t border-brand-cardBorder/60">
-              <span class="flex items-center space-x-1.5">
-                <span class="inline-block w-2 h-2 rounded-full bg-brand-emerald"></span>
-                <span>Pushes Score UP</span>
+            <!-- Legend & Identity -->
+            <div class="flex items-center justify-between text-xs text-brand-slateText pt-3 border-t border-brand-cardBorder">
+              <span class="flex items-center space-x-2">
+                <span class="inline-block w-2.5 h-2.5 rounded-full bg-brand-emerald"></span>
+                <span class="font-medium">Pushes Score UP (Emerald)</span>
               </span>
-              <span class="mono text-gray-400 text-[10px] hidden sm:inline">Readiness = Base + &Sigma;(SHAP)</span>
-              <span class="flex items-center space-x-1.5">
-                <span class="inline-block w-2 h-2 rounded-full bg-brand-coral"></span>
-                <span>Pushes Score DOWN</span>
+              <span class="mono text-gray-400 hidden sm:inline">Score = Base (3.28) + &Sigma;(SHAP)</span>
+              <span class="flex items-center space-x-2">
+                <span class="inline-block w-2.5 h-2.5 rounded-full bg-brand-coral"></span>
+                <span class="font-medium">Pushes Score DOWN (Coral)</span>
               </span>
             </div>
 
           </div>
-
         </div>
+
       </div>
 
+      <!-- Bottom Navigation Bar for Page 2 -->
+      <div class="mt-4 flex flex-col sm:flex-row justify-between items-center bg-[#101522] border border-white/10 rounded-2xl p-3 px-5 gap-3">
+        <button onclick="switchMainPage(1)" class="px-5 py-2 rounded-xl bg-brand-card hover:bg-white/10 border border-white/15 text-white font-bold text-xs flex items-center space-x-2 transition shadow-lg hover:border-brand-emerald/40 cursor-pointer">
+          <span class="text-brand-emerald">&larr;</span>
+          <span>Return to Ring Simulator &amp; Control Sliders (Page 1)</span>
+        </button>
+        <div class="flex items-center space-x-2 text-xs text-gray-400">
+          <span class="w-2 h-2 rounded-full bg-brand-blue animate-pulse"></span>
+          <span class="font-medium">Page 2 of 2: Sleep Architecture &amp; TreeSHAP Waterfall Active</span>
+        </div>
+      </div>
     </div>
+
   </main>
 
   <!-- Footer Info -->
