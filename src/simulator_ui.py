@@ -52,26 +52,31 @@ SIMULATOR_HTML = """<!DOCTYPE html>
       accent-color: #00E5A3;
     }
     ::-webkit-scrollbar {
-      width: 5px;
-      height: 5px;
+      width: 4px;
+      height: 4px;
     }
     ::-webkit-scrollbar-track {
-      background: #0D111A;
+      background: transparent;
     }
     ::-webkit-scrollbar-thumb {
-      background: #1E2536;
-      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 229, 163, 0.45);
     }
     .tab-active {
-      background: linear-gradient(135deg, rgba(0,229,163,0.18), rgba(0,210,180,0.12));
-      border: 1px solid rgba(0,229,163,0.35);
+      background: linear-gradient(135deg, rgba(0,229,163,0.22), rgba(0,210,180,0.12));
+      border: 1px solid rgba(0,229,163,0.45);
       color: #00E5A3 !important;
       font-weight: 700;
+      box-shadow: 0 4px 12px rgba(0, 229, 163, 0.12);
     }
     .subtab-active {
-      background-color: #00E5A3;
+      background: linear-gradient(135deg, #00E5A3, #00D2B4) !important;
       color: #080A0F !important;
-      font-weight: 700;
+      font-weight: 700 !important;
+      box-shadow: 0 4px 14px rgba(0, 229, 163, 0.25);
     }
     @keyframes pulseGlow {
       0%, 100% { opacity: 0.2; transform: scale(1); }
@@ -314,11 +319,11 @@ SIMULATOR_HTML = """<!DOCTYPE html>
           <!-- Tab Navigation Header -->
           <div class="border-b border-brand-cardBorder pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <div class="flex items-center space-x-1 bg-[#0A0D15] p-1 rounded-xl border border-white/10 w-fit">
-                <button id="tabBtnRaw" onclick="switchTab('raw')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg transition text-gray-300 hover:text-white flex items-center space-x-1.5">
-                  <span>🔬</span> <span>Raw Data</span>
+              <div class="flex items-center space-x-2 bg-[#0A0D15] p-1.5 rounded-2xl border border-white/10 shadow-inner">
+                <button id="tabBtnRaw" onclick="switchTab('raw')" class="px-5 py-2 text-xs font-bold rounded-xl transition text-gray-300 hover:text-white flex items-center space-x-2 tracking-wide">
+                  <span>🔬</span> <span>Raw Telemetry</span>
                 </button>
-                <button id="tabBtnFeatures" onclick="switchTab('features')" class="tab-active px-3.5 py-1.5 text-xs font-semibold rounded-lg transition text-gray-300 hover:text-white flex items-center space-x-1.5">
+                <button id="tabBtnFeatures" onclick="switchTab('features')" class="tab-active px-5 py-2 text-xs font-bold rounded-xl transition text-gray-300 hover:text-white flex items-center space-x-2 tracking-wide">
                   <span>⚙️</span> <span>Engineered Features (21)</span>
                 </button>
               </div>
@@ -347,7 +352,7 @@ SIMULATOR_HTML = """<!DOCTYPE html>
             <!-- ========================================================= -->
             <!-- TAB 1: RAW INPUTS CONTROLS                                -->
             <!-- ========================================================= -->
-            <div id="viewRaw" class="hidden space-y-2.5 overflow-y-auto max-h-[350px] pr-1">
+            <div id="viewRaw" class="hidden space-y-3 overflow-y-auto max-h-[380px] pr-1">
               <div class="bg-[#151B27] p-2.5 rounded-xl border border-white/5 text-xs text-brand-slateText flex items-center justify-between">
                 <span>Adjust raw sensor readings &amp; lifestyle habits; all 21 features update live.</span>
                 <span class="mono text-[11px] text-brand-emerald font-semibold">Formula: z = (x - &mu;) / &sigma;</span>
@@ -484,18 +489,18 @@ SIMULATOR_HTML = """<!DOCTYPE html>
             <!-- ========================================================= -->
             <!-- TAB 2: ENGINEERED FEATURES (Organized in 3 Sub-Tabs)      -->
             <!-- ========================================================= -->
-            <div id="viewFeatures" class="space-y-2.5 overflow-y-auto max-h-[350px] pr-1">
+            <div id="viewFeatures" class="space-y-3 overflow-y-auto max-h-[380px] pr-1">
               
-              <!-- Sub-Tab Category Pill Selector -->
-              <div class="flex items-center space-x-1.5 bg-[#0D111A] p-1 rounded-xl border border-white/10">
-                <button id="subTabBtnSleep" onclick="switchFeatureSubTab('sleep')" class="subtab-active flex-1 py-1.5 text-[11px] font-semibold rounded-lg transition text-white text-center">
-                  🌙 Sleep &amp; Restorative (6)
+              <!-- Sub-Tab Category Pill Selector (Spacious Full-Width Grid) -->
+              <div class="grid grid-cols-3 gap-2 bg-[#0D111A] p-1.5 rounded-2xl border border-white/10 shadow-inner">
+                <button id="subTabBtnSleep" onclick="switchFeatureSubTab('sleep')" class="subtab-active py-2 px-3 text-xs font-bold rounded-xl transition text-center flex items-center justify-center space-x-1.5 shadow-sm">
+                  <span>🌙</span> <span>Sleep &amp; Restorative (6)</span>
                 </button>
-                <button id="subTabBtnRecovery" onclick="switchFeatureSubTab('recovery')" class="flex-1 py-1.5 text-[11px] font-semibold rounded-lg transition text-gray-400 hover:text-white text-center">
-                  💓 Autonomic &amp; Stress (8)
+                <button id="subTabBtnRecovery" onclick="switchFeatureSubTab('recovery')" class="py-2 px-3 text-xs font-semibold rounded-xl transition text-gray-400 hover:text-white text-center flex items-center justify-center space-x-1.5">
+                  <span>💓</span> <span>Autonomic &amp; Stress (8)</span>
                 </button>
-                <button id="subTabBtnAlcohol" onclick="switchFeatureSubTab('alcohol')" class="flex-1 py-1.5 text-[11px] font-semibold rounded-lg transition text-gray-400 hover:text-white text-center">
-                  🍷 Alcohol &amp; History (7)
+                <button id="subTabBtnAlcohol" onclick="switchFeatureSubTab('alcohol')" class="py-2 px-3 text-xs font-semibold rounded-xl transition text-gray-400 hover:text-white text-center flex items-center justify-center space-x-1.5">
+                  <span>🍷</span> <span>Alcohol &amp; History (7)</span>
                 </button>
               </div>
 
@@ -771,16 +776,16 @@ SIMULATOR_HTML = """<!DOCTYPE html>
                 <span class="text-[10px] text-brand-slateText font-mono hidden md:inline">Base: <span id="baseValueText" class="text-gray-300 font-bold">3.2805</span></span>
               </div>
 
-              <!-- Filters: Top 10, Last 10, All 21 short of tab -->
-              <div class="flex items-center space-x-1 bg-[#0D111A] p-0.5 rounded-lg border border-white/10">
-                <button id="shapFilterTop10" onclick="setShapFilter('top10')" class="px-2.5 py-1 text-[11px] font-bold rounded-md bg-brand-emerald/20 text-brand-emerald border border-brand-emerald/40 shadow-sm transition">
-                  Top 10
+              <!-- Filters: Top 10 Drivers, Last 10 Drivers, All 21 Features -->
+              <div class="flex items-center space-x-1.5 bg-[#0D111A] p-1 rounded-xl border border-white/10">
+                <button id="shapFilterTop10" onclick="setShapFilter('top10')" class="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-brand-emerald/20 text-brand-emerald border border-brand-emerald/40 shadow-sm transition">
+                  Top 10 Drivers
                 </button>
-                <button id="shapFilterLast10" onclick="setShapFilter('last10')" class="px-2.5 py-1 text-[11px] font-semibold rounded-md text-gray-400 hover:text-white transition">
-                  Last 10
+                <button id="shapFilterLast10" onclick="setShapFilter('last10')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-gray-400 hover:text-white transition">
+                  Last 10 Drivers
                 </button>
-                <button id="shapFilterAll" onclick="setShapFilter('all')" class="px-2.5 py-1 text-[11px] font-semibold rounded-md text-gray-400 hover:text-white transition">
-                  All 21
+                <button id="shapFilterAll" onclick="setShapFilter('all')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-gray-400 hover:text-white transition">
+                  All 21 Features
                 </button>
               </div>
 
@@ -791,7 +796,7 @@ SIMULATOR_HTML = """<!DOCTYPE html>
             </div>
 
             <!-- Dynamic 2-Column SHAP Waterfall in 2-Column Responsive Grid -->
-            <div id="shapBarsContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-2 overflow-y-auto max-h-[250px] pr-1">
+            <div id="shapBarsContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-2 overflow-y-auto max-h-[265px] pr-1">
               <!-- Rendered dynamically via JavaScript -->
             </div>
 
@@ -989,19 +994,23 @@ SIMULATOR_HTML = """<!DOCTYPE html>
       document.getElementById('featSubRecovery').classList.add('hidden');
       document.getElementById('featSubAlcohol').classList.add('hidden');
 
-      document.getElementById('subTabBtnSleep').classList.remove('subtab-active');
-      document.getElementById('subTabBtnRecovery').classList.remove('subtab-active');
-      document.getElementById('subTabBtnAlcohol').classList.remove('subtab-active');
+      const sleepBtn = document.getElementById('subTabBtnSleep');
+      const recBtn = document.getElementById('subTabBtnRecovery');
+      const alcBtn = document.getElementById('subTabBtnAlcohol');
+
+      const inactive = 'py-2 px-3 text-xs font-semibold rounded-xl transition text-gray-400 hover:text-white text-center flex items-center justify-center space-x-1.5';
+      const active = 'subtab-active py-2 px-3 text-xs font-bold rounded-xl transition text-center flex items-center justify-center space-x-1.5 shadow-sm';
+
+      sleepBtn.className = subTabName === 'sleep' ? active : inactive;
+      recBtn.className = subTabName === 'recovery' ? active : inactive;
+      alcBtn.className = subTabName === 'alcohol' ? active : inactive;
 
       if (subTabName === 'sleep') {
         document.getElementById('featSubSleep').classList.remove('hidden');
-        document.getElementById('subTabBtnSleep').classList.add('subtab-active');
       } else if (subTabName === 'recovery') {
         document.getElementById('featSubRecovery').classList.remove('hidden');
-        document.getElementById('subTabBtnRecovery').classList.add('subtab-active');
       } else if (subTabName === 'alcohol') {
         document.getElementById('featSubAlcohol').classList.remove('hidden');
-        document.getElementById('subTabBtnAlcohol').classList.add('subtab-active');
       }
     }
 
@@ -1013,16 +1022,16 @@ SIMULATOR_HTML = """<!DOCTYPE html>
 
       if (btnTop && btnLast && btnAll) {
         btnTop.className = filter === 'top10'
-          ? 'px-2.5 py-1 text-[11px] font-bold rounded-md bg-brand-emerald/20 text-brand-emerald border border-brand-emerald/40 shadow-sm transition'
-          : 'px-2.5 py-1 text-[11px] font-semibold rounded-md text-gray-400 hover:text-white transition';
+          ? 'px-3.5 py-1.5 text-xs font-bold rounded-lg bg-brand-emerald/20 text-brand-emerald border border-brand-emerald/40 shadow-sm transition'
+          : 'px-3.5 py-1.5 text-xs font-semibold rounded-lg text-gray-400 hover:text-white transition';
 
         btnLast.className = filter === 'last10'
-          ? 'px-2.5 py-1 text-[11px] font-bold rounded-md bg-brand-coral/20 text-brand-coral border border-brand-coral/40 shadow-sm transition'
-          : 'px-2.5 py-1 text-[11px] font-semibold rounded-md text-gray-400 hover:text-white transition';
+          ? 'px-3.5 py-1.5 text-xs font-bold rounded-lg bg-brand-coral/20 text-brand-coral border border-brand-coral/40 shadow-sm transition'
+          : 'px-3.5 py-1.5 text-xs font-semibold rounded-lg text-gray-400 hover:text-white transition';
 
         btnAll.className = filter === 'all'
-          ? 'px-2.5 py-1 text-[11px] font-bold rounded-md bg-brand-card text-white border border-white/20 shadow-sm transition'
-          : 'px-2.5 py-1 text-[11px] font-semibold rounded-md text-gray-400 hover:text-white transition';
+          ? 'px-3.5 py-1.5 text-xs font-bold rounded-lg bg-brand-card text-white border border-white/20 shadow-sm transition'
+          : 'px-3.5 py-1.5 text-xs font-semibold rounded-lg text-gray-400 hover:text-white transition';
       }
 
       if (latestShapData) {
@@ -1454,7 +1463,7 @@ SIMULATOR_HTML = """<!DOCTYPE html>
         const barPct = Math.min(100, Math.round((item.abs_impact / maxAbs) * 100));
 
         const row = document.createElement('div');
-        row.className = 'bg-[#151A27] rounded-xl p-1.5 px-2.5 border border-white/5 flex flex-col justify-center space-y-1 hover:border-white/20 transition';
+        row.className = 'bg-[#151A27]/90 hover:bg-[#1A2030] rounded-xl p-2 px-3 border border-white/5 flex flex-col justify-center space-y-1.5 hover:border-brand-emerald/30 transition shadow-sm';
 
         row.innerHTML = `
           <div class="flex items-center justify-between text-xs">
