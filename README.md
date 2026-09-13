@@ -170,8 +170,8 @@ The interactive simulator (`http://localhost:8000/simulator`) provides a single-
   - **Engineered Features Tab:** Categorized into 3 sub-tabs keeping the UI clean and accessible:
     - 🌙 *Sleep & Restorative (6 features)*: duration z-score, sleep debt, restorative sleep volume, deep z-score, REM z-score, restorative percentage.
     - 💓 *Autonomic & Stress (8 features)*: resting HR z-score, HRV z-score, stress index, recovery score, and expanding baseline ratios.
-    - 🍷 *Alcohol & History (7 features)*: alcohol units, alcohol tier, alcohol $	imes$ HRV interaction, 5-day rolling feeling, 7-day EWM feeling, expanding historical mean.
-  - **SHAP Values Tab:** Real-time 21-feature TreeSHAP waterfall list rendered in a responsive 2-column grid with a quick toggle between `Top 10 Drivers` and `All 21 Features`, displaying population prior bias, net contribution sum, and sorted positive/negative drivers fitting cleanly without visual gaps.
+    - 🍷 *Alcohol & History (7 features)*: alcohol units, alcohol tier, alcohol $\times$ HRV interaction, 5-day rolling feeling, 7-day EWM feeling, expanding historical mean.
+  - **Persistent TreeSHAP Section (Vacant Space Below Sliders):** Embedded directly beneath the active sliders in the previously vacant lower space—features live mini-tabs for `Top 10` (highest positive boosters), `Last 10` (most negative drags), and `All 21` features, displaying real-time population prior bias, net TreeSHAP contribution sum, and sorted signed impact bars simultaneously as sliders are adjusted.
 
 ### Key API Endpoints
 | Method | Endpoint | Description |

@@ -315,14 +315,11 @@ SIMULATOR_HTML = """<!DOCTYPE html>
           <div class="border-b border-brand-cardBorder pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <div class="flex items-center space-x-1 bg-[#0A0D15] p-1 rounded-xl border border-white/10 w-fit">
-                <button id="tabBtnRaw" onclick="switchTab('raw')" class="px-3 py-1.5 text-xs font-semibold rounded-lg transition text-gray-300 hover:text-white flex items-center space-x-1.5">
+                <button id="tabBtnRaw" onclick="switchTab('raw')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg transition text-gray-300 hover:text-white flex items-center space-x-1.5">
                   <span>🔬</span> <span>Raw Data</span>
                 </button>
-                <button id="tabBtnFeatures" onclick="switchTab('features')" class="tab-active px-3 py-1.5 text-xs font-semibold rounded-lg transition text-gray-300 hover:text-white flex items-center space-x-1.5">
-                  <span>⚙️</span> <span>Engineered Features</span>
-                </button>
-                <button id="tabBtnShap" onclick="switchTab('shap')" class="px-3 py-1.5 text-xs font-semibold rounded-lg transition text-gray-300 hover:text-white flex items-center space-x-1.5">
-                  <span>📊</span> <span>SHAP Values</span>
+                <button id="tabBtnFeatures" onclick="switchTab('features')" class="tab-active px-3.5 py-1.5 text-xs font-semibold rounded-lg transition text-gray-300 hover:text-white flex items-center space-x-1.5">
+                  <span>⚙️</span> <span>Engineered Features (21)</span>
                 </button>
               </div>
             </div>
@@ -350,7 +347,7 @@ SIMULATOR_HTML = """<!DOCTYPE html>
             <!-- ========================================================= -->
             <!-- TAB 1: RAW INPUTS CONTROLS                                -->
             <!-- ========================================================= -->
-            <div id="viewRaw" class="hidden space-y-3 flex-1 flex flex-col justify-start overflow-y-auto pr-1">
+            <div id="viewRaw" class="hidden space-y-2.5 overflow-y-auto max-h-[350px] pr-1">
               <div class="bg-[#151B27] p-2.5 rounded-xl border border-white/5 text-xs text-brand-slateText flex items-center justify-between">
                 <span>Adjust raw sensor readings &amp; lifestyle habits; all 21 features update live.</span>
                 <span class="mono text-[11px] text-brand-emerald font-semibold">Formula: z = (x - &mu;) / &sigma;</span>
@@ -487,7 +484,7 @@ SIMULATOR_HTML = """<!DOCTYPE html>
             <!-- ========================================================= -->
             <!-- TAB 2: ENGINEERED FEATURES (Organized in 3 Sub-Tabs)      -->
             <!-- ========================================================= -->
-            <div id="viewFeatures" class="space-y-3 flex-1 flex flex-col justify-start overflow-y-auto pr-1">
+            <div id="viewFeatures" class="space-y-2.5 overflow-y-auto max-h-[350px] pr-1">
               
               <!-- Sub-Tab Category Pill Selector -->
               <div class="flex items-center space-x-1.5 bg-[#0D111A] p-1 rounded-xl border border-white/10">
@@ -759,45 +756,56 @@ SIMULATOR_HTML = """<!DOCTYPE html>
 
             </div>
 
-            <!-- ========================================================= -->
-            <!-- TAB 3: SHAP VALUES & WATERFALL EXPLAINABILITY             -->
-            <!-- ========================================================= -->
-            <div id="viewShap" class="hidden space-y-2.5 flex-1 flex flex-col justify-start pr-1">
-              <div class="flex items-center justify-between bg-[#151A27] p-2.5 sm:p-3 rounded-xl border border-white/5 gap-2">
-                <div>
-                  <div class="text-[10px] uppercase text-brand-slateText font-semibold">POPULATION PRIOR BIAS</div>
-                  <div class="text-xs sm:text-sm font-bold mono text-gray-200" id="baseValueText">3.2805</div>
-                </div>
-                <div class="flex items-center space-x-1 bg-[#0D111A] p-0.5 rounded-lg border border-white/5">
-                  <button id="shapFilterTop" onclick="setShapFilter('top')" class="px-2 py-1 text-[10px] font-semibold rounded bg-brand-card text-white border border-white/10 transition">
-                    Top 10 Drivers
-                  </button>
-                  <button id="shapFilterAll" onclick="setShapFilter('all')" class="px-2 py-1 text-[10px] font-semibold rounded text-gray-400 hover:text-white transition">
-                    All 21 Features
-                  </button>
-                </div>
-                <div class="text-right">
-                  <div class="text-[10px] uppercase text-brand-slateText font-semibold">NET SHAP SUM IMPACT</div>
-                  <div class="text-xs sm:text-sm font-bold mono text-brand-emerald" id="shapTotalSum">+0.906</div>
-                </div>
+          </div>
+
+          <!-- ========================================================= -->
+          <!-- PERSISTENT SHAP VALUES & WATERFALL EXPLAINABILITY         -->
+          <!-- (Fills the vacant space below the input sliders)         -->
+          <!-- ========================================================= -->
+          <div id="shapSection" class="border-t border-brand-cardBorder pt-3 flex-1 flex flex-col justify-start space-y-2.5 min-h-0">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between bg-[#151A27] p-2 sm:p-2.5 rounded-xl border border-white/5 gap-2">
+              <div class="flex items-center space-x-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-brand-blue flex items-center space-x-1">
+                  <span>⚡</span> <span>TreeSHAP Drivers</span>
+                </span>
+                <span class="text-[10px] text-brand-slateText font-mono hidden md:inline">Base: <span id="baseValueText" class="text-gray-300 font-bold">3.2805</span></span>
               </div>
 
-              <!-- Dynamic 21-Feature TreeSHAP Waterfall List in 2-Column Responsive Grid -->
-              <div id="shapBarsContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-2 overflow-y-auto max-h-[460px] pr-1">
-                <!-- Rendered dynamically via JavaScript -->
+              <!-- Filters: Top 10, Last 10, All 21 short of tab -->
+              <div class="flex items-center space-x-1 bg-[#0D111A] p-0.5 rounded-lg border border-white/10">
+                <button id="shapFilterTop10" onclick="setShapFilter('top10')" class="px-2.5 py-1 text-[11px] font-bold rounded-md bg-brand-emerald/20 text-brand-emerald border border-brand-emerald/40 shadow-sm transition">
+                  Top 10
+                </button>
+                <button id="shapFilterLast10" onclick="setShapFilter('last10')" class="px-2.5 py-1 text-[11px] font-semibold rounded-md text-gray-400 hover:text-white transition">
+                  Last 10
+                </button>
+                <button id="shapFilterAll" onclick="setShapFilter('all')" class="px-2.5 py-1 text-[11px] font-semibold rounded-md text-gray-400 hover:text-white transition">
+                  All 21
+                </button>
               </div>
 
-              <div class="flex items-center justify-between text-[11px] text-brand-slateText pt-2 border-t border-brand-cardBorder">
-                <span class="flex items-center space-x-1.5">
-                  <span class="inline-block w-2.5 h-2.5 rounded-full bg-brand-emerald"></span>
-                  <span>Pushes Score UP</span>
-                </span>
-                <span class="mono text-gray-400 hidden sm:inline">Score = Base + &Sigma;(SHAP)</span>
-                <span class="flex items-center space-x-1.5">
-                  <span class="inline-block w-2.5 h-2.5 rounded-full bg-brand-coral"></span>
-                  <span>Pushes Score DOWN</span>
-                </span>
+              <div class="text-right flex items-center space-x-2 justify-end">
+                <span class="text-[10px] uppercase text-brand-slateText font-semibold">Net SHAP:</span>
+                <span class="text-xs sm:text-sm font-bold mono text-brand-emerald" id="shapTotalSum">+0.906</span>
               </div>
+            </div>
+
+            <!-- Dynamic 2-Column SHAP Waterfall in 2-Column Responsive Grid -->
+            <div id="shapBarsContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-2 overflow-y-auto max-h-[250px] pr-1">
+              <!-- Rendered dynamically via JavaScript -->
+            </div>
+
+            <!-- Legend -->
+            <div class="flex items-center justify-between text-[11px] text-brand-slateText pt-1.5 border-t border-brand-cardBorder/60">
+              <span class="flex items-center space-x-1.5">
+                <span class="inline-block w-2 h-2 rounded-full bg-brand-emerald"></span>
+                <span>Pushes Score UP</span>
+              </span>
+              <span class="mono text-gray-400 text-[10px] hidden sm:inline">Readiness = Base + &Sigma;(SHAP)</span>
+              <span class="flex items-center space-x-1.5">
+                <span class="inline-block w-2 h-2 rounded-full bg-brand-coral"></span>
+                <span>Pushes Score DOWN</span>
+              </span>
             </div>
 
           </div>
@@ -935,7 +943,7 @@ SIMULATOR_HTML = """<!DOCTYPE html>
     };
 
     let isColdStartMode = false;
-    let shapFilterMode = 'top';
+    let shapFilter = 'top10'; // 'top10', 'last10', 'all'
     let latestShapData = null;
 
     // User calibration baseline constants
@@ -959,11 +967,9 @@ SIMULATOR_HTML = """<!DOCTYPE html>
       activeTab = tabName;
       document.getElementById('viewRaw').classList.add('hidden');
       document.getElementById('viewFeatures').classList.add('hidden');
-      document.getElementById('viewShap').classList.add('hidden');
 
       document.getElementById('tabBtnRaw').classList.remove('tab-active');
       document.getElementById('tabBtnFeatures').classList.remove('tab-active');
-      document.getElementById('tabBtnShap').classList.remove('tab-active');
 
       if (tabName === 'raw') {
         document.getElementById('viewRaw').classList.remove('hidden');
@@ -971,9 +977,6 @@ SIMULATOR_HTML = """<!DOCTYPE html>
       } else if (tabName === 'features') {
         document.getElementById('viewFeatures').classList.remove('hidden');
         document.getElementById('tabBtnFeatures').classList.add('tab-active');
-      } else if (tabName === 'shap') {
-        document.getElementById('viewShap').classList.remove('hidden');
-        document.getElementById('tabBtnShap').classList.add('tab-active');
       }
     }
 
@@ -998,17 +1001,26 @@ SIMULATOR_HTML = """<!DOCTYPE html>
       }
     }
 
-    function setShapFilter(mode) {
-      shapFilterMode = mode;
-      const btnTop = document.getElementById('shapFilterTop');
+    function setShapFilter(filter) {
+      shapFilter = filter;
+      const btnTop = document.getElementById('shapFilterTop10');
+      const btnLast = document.getElementById('shapFilterLast10');
       const btnAll = document.getElementById('shapFilterAll');
-      if (mode === 'top') {
-        btnTop.className = 'px-2 py-1 text-[10px] font-semibold rounded bg-brand-card text-white border border-white/10 transition';
-        btnAll.className = 'px-2 py-1 text-[10px] font-semibold rounded text-gray-400 hover:text-white transition';
-      } else {
-        btnAll.className = 'px-2 py-1 text-[10px] font-semibold rounded bg-brand-card text-white border border-white/10 transition';
-        btnTop.className = 'px-2 py-1 text-[10px] font-semibold rounded text-gray-400 hover:text-white transition';
+
+      if (btnTop && btnLast && btnAll) {
+        btnTop.className = filter === 'top10'
+          ? 'px-2.5 py-1 text-[11px] font-bold rounded-md bg-brand-emerald/20 text-brand-emerald border border-brand-emerald/40 shadow-sm transition'
+          : 'px-2.5 py-1 text-[11px] font-semibold rounded-md text-gray-400 hover:text-white transition';
+
+        btnLast.className = filter === 'last10'
+          ? 'px-2.5 py-1 text-[11px] font-bold rounded-md bg-brand-coral/20 text-brand-coral border border-brand-coral/40 shadow-sm transition'
+          : 'px-2.5 py-1 text-[11px] font-semibold rounded-md text-gray-400 hover:text-white transition';
+
+        btnAll.className = filter === 'all'
+          ? 'px-2.5 py-1 text-[11px] font-bold rounded-md bg-brand-card text-white border border-white/20 shadow-sm transition'
+          : 'px-2.5 py-1 text-[11px] font-semibold rounded-md text-gray-400 hover:text-white transition';
       }
+
       if (latestShapData) {
         renderShapBars(latestShapData.shap_breakdown, latestShapData.base_value);
       }
@@ -1416,9 +1428,21 @@ SIMULATOR_HTML = """<!DOCTYPE html>
 
     function renderShapBars(breakdown, baseVal) {
       const container = document.getElementById('shapBarsContainer');
+      if (!container) return;
       container.innerHTML = '';
 
-      const displayList = shapFilterMode === 'top' ? breakdown.slice(0, 10) : breakdown;
+      // Sort by signed shap_impact descending (positive boosters to negative drags)
+      const sortedByImpact = [...breakdown].sort((a, b) => b.shap_impact - a.shap_impact);
+
+      let displayList = [];
+      if (shapFilter === 'top10') {
+        displayList = sortedByImpact.slice(0, 10);
+      } else if (shapFilter === 'last10') {
+        displayList = sortedByImpact.slice(-10);
+      } else {
+        displayList = sortedByImpact;
+      }
+
       const maxAbs = Math.max(...breakdown.map(b => b.abs_impact), 0.25);
 
       displayList.forEach(item => {
@@ -1426,7 +1450,7 @@ SIMULATOR_HTML = """<!DOCTYPE html>
         const barPct = Math.min(100, Math.round((item.abs_impact / maxAbs) * 100));
 
         const row = document.createElement('div');
-        row.className = 'bg-[#151A27] rounded-xl p-2 px-2.5 border border-white/5 flex flex-col justify-center space-y-1 hover:border-white/20 transition';
+        row.className = 'bg-[#151A27] rounded-xl p-1.5 px-2.5 border border-white/5 flex flex-col justify-center space-y-1 hover:border-white/20 transition';
 
         row.innerHTML = `
           <div class="flex items-center justify-between text-xs">
